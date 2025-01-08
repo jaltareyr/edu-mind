@@ -3,7 +3,8 @@ const Course = require('../models/courseModel');
 // Get all courses
 const getCourses = async (req, res, next) => {
     try {
-        const courses = await Course.find({ userId: req.user.id });
+        console.log(req.user);
+        const courses = await Course.find({ userId: req.user.userId });
         res.status(200).json(courses);
     } catch (error) {
         next(error);

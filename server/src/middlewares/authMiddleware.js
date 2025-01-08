@@ -3,7 +3,7 @@ const User = require("../models/userModel");
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.cookies.authToken;
+        const token = req.cookies.session;
 
         if (!token) {
             return res.status(401).json({ message: "Unauthorized: No token provided" });

@@ -18,15 +18,6 @@ const registerUser = async (req, res) => {
 
         const user = await User.create({ name, email, password });
 
-        // Set token as HttpOnly cookie
-        const token = generateToken(user._id);
-        res.cookie('authToken', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // Use secure in production
-            sameSite: 'strict',
-            maxAge: 60 * 60 * 1000, // 1 hour
-        });
-
         res.status(201).json({
             id: user._id,
             name: user.name,
@@ -45,7 +36,7 @@ const loginUser = async (req, res) => {
         const user = await User.findOne({ email });
         if (user && (await user.matchPassword(password))) {
             const token = generateToken(user._id);
-            res.cookie('authToken', token, {
+            res.cookie('session', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
@@ -67,7 +58,7 @@ const loginUser = async (req, res) => {
 
 // Logout User
 const logoutUser = (req, res) => {
-    res.clearCookie('authToken');
+    res.clearCookie('session');
     res.status(200).json({ message: 'Logged out successfully' });
 };
 

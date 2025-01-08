@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -13,9 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
+import courseService from '@/components/service/courseService'
 interface Course {
-  id: string;
+  _id: string;
   name: string;
   instructor: string;
   term: string;
@@ -23,63 +23,83 @@ interface Course {
 }
 
 export default function Dashboard() {
-  const [courses, setCourses] = useState<Course[]>([
-    { id: 'CS101', name: 'Introduction to Computer Science', instructor: 'Dr. Smith', term: 'Fall 2023', description: 'An introductory course covering the basics of computer science and programming.' },
-    { id: 'MATH201', name: 'Linear Algebra', instructor: 'Prof. Johnson', term: 'Spring 2024', description: 'A comprehensive study of linear algebra concepts and their applications.' },
-    { id: 'ENG102', name: 'English Composition', instructor: 'Dr. Brown', term: 'Fall 2023', description: 'Focuses on developing critical thinking and writing skills for academic and professional contexts.' },
-  ]);
+  const [courses, setCourses] = useState<Course[]>([]);
 
-  const [newCourseName, setNewCourseName] = useState('');
+  const [newCourse, setNewCourse] = useState<Omit<Course, '_id'>>({
+    name: '',
+    instructor: '',
+    term: '',
+    description: '',
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setIsLoading(true);
+      try {
+        const response = await courseService.get();
+        setCourses(response || []);
+      } catch (error) {
+        console.error('Failed to fetch courses:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   const addNewCourse = () => {
-    if (newCourseName.trim() !== '') {
-      const newCourse: Course = {
-        id: `COURSE${courses.length + 1}`,
-        name: newCourseName,
-        instructor: 'TBA',
-        term: 'Upcoming',
-        description: 'Course description to be added.',
+    if (newCourse.name.trim() !== '') {
+      const course: Course = {
+        _id: `COURSE${courses.length + 1}`,
+        ...newCourse,
       };
-      setCourses([...courses, newCourse]);
-      setNewCourseName('');
+      setCourses([...courses, course]);
+      setNewCourse({ name: '', instructor: '', term: '', description: '' });
       setIsDialogOpen(false);
     }
   };
 
-  const deleteCourse = (id: string) => {
-    setCourses(courses.filter(course => course.id !== id));
+  const deleteCourse = (_id: string) => {
+    setCourses(courses.filter(course => course._id !== _id));
   };
 
   const editCourse = (course: Course) => {
     setEditingCourse(course);
-    setNewCourseName(course.name);
+    setNewCourse({
+      name: course.name,
+      instructor: course.instructor,
+      term: course.term,
+      description: course.description,
+    });
     setIsDialogOpen(true);
   };
 
   const saveCourseEdit = () => {
-    if (editingCourse && newCourseName.trim() !== '') {
+    if (editingCourse && newCourse.name.trim() !== '') {
       setCourses(courses.map(course => 
-        course.id === editingCourse.id ? { ...course, name: newCourseName } : course
+        course._id === editingCourse._id ? { ...course, ...newCourse } : course
       ));
       setEditingCourse(null);
-      setNewCourseName('');
+      setNewCourse({ name: '', instructor: '', term: '', description: '' });
       setIsDialogOpen(false);
     }
   };
 
-  const shareCourse = (id: string) => {
+  const shareCourse = (_id: string) => {
     // Implement sharing functionality here
-    console.log(`Sharing course ${id}`);
+    console.log(`Sharing course ${_id}`);
   };
 
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-black">My Courses</h1>
+          <h1 className="text-4xl font-bold text-black">{isLoading ? "Loading..." : "My Courses"}</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-black text-white hover:bg-gray-800">
@@ -97,8 +117,41 @@ export default function Dashboard() {
                   </Label>
                   <Input
                     id="courseName"
-                    value={newCourseName}
-                    onChange={(e) => setNewCourseName(e.target.value)}
+                    value={newCourse.name}
+                    onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                    className="col-span-3 border-black"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="instructor" className="text-right text-black">
+                    Instructor
+                  </Label>
+                  <Input
+                    id="instructor"
+                    value={newCourse.instructor}
+                    onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
+                    className="col-span-3 border-black"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="term" className="text-right text-black">
+                    Term
+                  </Label>
+                  <Input
+                    id="term"
+                    value={newCourse.term}
+                    onChange={(e) => setNewCourse({ ...newCourse, term: e.target.value })}
+                    className="col-span-3 border-black"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="description" className="text-right text-black">
+                    Description
+                  </Label>
+                  <Input
+                    id="description"
+                    value={newCourse.description}
+                    onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -111,7 +164,7 @@ export default function Dashboard() {
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
-            <Card key={course.id} className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-lg border-black">
+            <Card key={course._id} className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-lg border-black">
               <CardHeader className="bg-black text-white p-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-lg font-semibold">
                   {course.name}
@@ -128,11 +181,11 @@ export default function Dashboard() {
                       <span className="mr-2">✏️</span>
                       <span>Edit</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => shareCourse(course.id)}>
+                    <DropdownMenuItem onClick={() => shareCourse(course._id)}>
                       <span className="mr-2">🔗</span>
                       <span>Share</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => deleteCourse(course.id)}>
+                    <DropdownMenuItem onClick={() => deleteCourse(course._id)}>
                       <span className="mr-2">🗑️</span>
                       <span>Delete</span>
                     </DropdownMenuItem>
@@ -141,7 +194,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600"><strong>Course ID:</strong> {course.id}</p>
+                  <p className="text-sm text-gray-600"><strong>Course ID:</strong> {course._id}</p>
                   <p className="text-sm text-gray-600"><strong>Instructor:</strong> {course.instructor}</p>
                   <p className="text-sm text-gray-600"><strong>Term:</strong> {course.term}</p>
                 </div>
@@ -163,7 +216,7 @@ export default function Dashboard() {
                         <DialogTitle className="text-black">{course.name}</DialogTitle>
                       </DialogHeader>
                       <div className="py-4 text-black">
-                        <p><strong>Course ID:</strong> {course.id}</p>
+                        <p><strong>Course ID:</strong> {course._id}</p>
                         <p><strong>Instructor:</strong> {course.instructor}</p>
                         <p><strong>Term:</strong> {course.term}</p>
                         <p className="mt-4"><strong>Description:</strong></p>
@@ -172,7 +225,7 @@ export default function Dashboard() {
                     </DialogContent>
                   </Dialog>
                   <Button size="sm" className="bg-black text-white hover:bg-gray-800">
-                    <Link href={`/course/${course.id}`} className="flex items-center">
+                    <Link href={`/course/${course._id}`} className="flex items-center">
                       <span className="mr-1">📚</span>
                       Enter Course
                     </Link>
