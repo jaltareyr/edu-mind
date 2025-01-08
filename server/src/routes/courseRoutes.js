@@ -3,6 +3,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { getCourses, getCourseById, createCourse, updateModuleId, deleteCourse } = require('../controllers/courseController');
 const router = express.Router();
 
+// Apply authMiddleware to all routes
 router.use(authMiddleware);
 
 router.get('/get', getCourses); //GET http://localhost:5000/api/course/get
