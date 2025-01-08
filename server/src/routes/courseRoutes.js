@@ -1,13 +1,14 @@
 const express = require('express');
-const coursesController = require('../controllers/courses.controller');
-const authMiddleware = require('../middlewares/auth.middleware');
-
+const authMiddleware = require('../middlewares/authMiddleware');
+const { getCourses, getCourseById, createCourse, updateModuleId, deleteCourse } = require('../controllers/courseController');
 const router = express.Router();
 
-router.get('/get', authMiddleware, coursesController.get);
-router.get('/getById', authMiddleware, coursesController.getById);
-router.post('/create', authMiddleware, coursesController.create);
-router.delete('/:id', authMiddleware, coursesController.delete);
-router.patch('/updateModuleId/:courseId', authMiddleware, coursesController.updateModuleId);
+router.use(authMiddleware);
+
+router.get('/get', getCourses); //GET http://localhost:5000/api/course/get
+router.get('/getById', getCourseById); //GET http://localhost:5000/api/course/getById?id=courseId
+router.post('/create', createCourse); //POST http://localhost:5000/api/course/create
+router.patch('/updateModuleId', updateModuleId);
+router.delete('/:id', deleteCourse);
 
 module.exports = router;
