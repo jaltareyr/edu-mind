@@ -13,9 +13,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import courseService from '@/components/service/courseService'
+import CourseService from '@/components/service/courseService'
 interface Course {
   _id: string;
+  courseId: string,
   name: string;
   instructor: string;
   term: string;
@@ -24,13 +25,13 @@ interface Course {
 
 export default function Dashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
-
-  const [newCourse, setNewCourse] = useState<Omit<Course, '_id'>>({
+  const [newCourse, setNewCourse] = useState({
     name: '',
+    courseId: '',
     instructor: '',
     term: '',
     description: '',
-  });
+  });  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -40,7 +41,7 @@ export default function Dashboard() {
     const fetchCourses = async () => {
       setIsLoading(true);
       try {
-        const response = await courseService.get();
+        const response = await CourseService.get();
         setCourses(response || []);
       } catch (error) {
         console.error('Failed to fetch courses:', error);
@@ -52,26 +53,54 @@ export default function Dashboard() {
     fetchCourses();
   }, []);
 
-  const addNewCourse = () => {
+  const addNewCourse = async () => {
     if (newCourse.name.trim() !== '') {
-      const course: Course = {
-        _id: `COURSE${courses.length + 1}`,
-        ...newCourse,
-      };
-      setCourses([...courses, course]);
-      setNewCourse({ name: '', instructor: '', term: '', description: '' });
-      setIsDialogOpen(false);
+      try {
+        // Send the new course to the backend
+        const createdCourse = await CourseService.create(newCourse.name, newCourse.courseId, newCourse.instructor, newCourse.term, newCourse.description);
+        
+        // Add the new course returned from the backend to the state
+        setCourses((prevCourses) => [...prevCourses, createdCourse]);
+  
+        // Reset the new course input
+        setNewCourse({
+          name: '',
+          courseId: '',
+          instructor: '',
+          term: '',
+          description: '',
+        });
+  
+        setIsDialogOpen(false); // Close the dialog
+      } catch (error) {
+        console.error('Failed to add new course:', error);
+      }
+    } else {
+      alert('Course name is required!');
     }
   };
-
-  const deleteCourse = (_id: string) => {
-    setCourses(courses.filter(course => course._id !== _id));
+  
+  const deleteCourse = async (_id: string) => {
+    try {
+      // Call the delete API to remove the course from the backend
+      await CourseService.delete(_id);
+  
+      // Update the state to remove the deleted course from the UI
+      setCourses((prevCourses) => prevCourses.filter((course) => course._id !== _id));
+  
+      console.log(`Course with ID ${_id} deleted successfully.`);
+    } catch (error) {
+      console.error('Failed to delete course:', error);
+      alert('Failed to delete the course. Please try again.');
+    }
   };
-
+    
   const editCourse = (course: Course) => {
+    CourseService.edit(course._id, course.name, course.courseId, course.instructor, course.term, course.description)
     setEditingCourse(course);
     setNewCourse({
       name: course.name,
+      courseId: course.courseId,
       instructor: course.instructor,
       term: course.term,
       description: course.description,
@@ -85,7 +114,7 @@ export default function Dashboard() {
         course._id === editingCourse._id ? { ...course, ...newCourse } : course
       ));
       setEditingCourse(null);
-      setNewCourse({ name: '', instructor: '', term: '', description: '' });
+      setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
       setIsDialogOpen(false);
     }
   };
@@ -119,6 +148,17 @@ export default function Dashboard() {
                     id="courseName"
                     value={newCourse.name}
                     onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                    className="col-span-3 border-black"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="courseId" className="text-right text-black">
+                    Course ID
+                  </Label>
+                  <Input
+                    id="courseId"
+                    value={newCourse.courseId}
+                    onChange={(e) => setNewCourse({ ...newCourse, courseId: e.target.value })}
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -194,7 +234,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600"><strong>Course ID:</strong> {course._id}</p>
+                  <p className="text-sm text-gray-600"><strong>Course ID:</strong> {course.courseId}</p>
                   <p className="text-sm text-gray-600"><strong>Instructor:</strong> {course.instructor}</p>
                   <p className="text-sm text-gray-600"><strong>Term:</strong> {course.term}</p>
                 </div>

@@ -27,10 +27,14 @@ const getCourseById = async (req, res, next) => {
 // Create a new course
 const createCourse = async (req, res, next) => {
     try {
+        console.log(req.user);
         const course = new Course({
             name: req.body.name,
             description: req.body.description || "",
-            userId: req.user.id,
+            courseId: req.body.courseId,
+            term: req.body.term,
+            instructor: req.body.instructor,
+            userId: req.user.userId,
         });
 
         const savedCourse = await course.save();
@@ -43,7 +47,7 @@ const createCourse = async (req, res, next) => {
 // Update course with a new module ID
 const updateModuleId = async (req, res, next) => {
     try {
-        const { courseId } = req.query; // Get courseId from query
+        const { courseId } = req.query;
         const { moduleId } = req.body;
 
         if (!courseId) {
@@ -92,6 +96,29 @@ const deleteCourse = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
+      
 };
 
-module.exports = { getCourses, getCourseById, createCourse, updateModuleId, deleteCourse };
+const editCourse = async (req, res, next) => {
+    try {
+      const { id } = req.params; // Get the course ID from route params
+      const { name, courseId, instructor, term, description } = req.body; // Extract the updated fields
+  
+      // Find the course and update the fields
+      const updatedCourse = await Course.findByIdAndUpdate(
+        id,
+        { name, courseId, instructor, term, description },
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedCourse) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+  
+      res.status(200).json(updatedCourse); // Return the updated course
+    } catch (error) {
+      next(error); // Pass the error to the error handler
+    }
+};
+
+module.exports = { getCourses, getCourseById, createCourse, updateModuleId, deleteCourse, editCourse };
