@@ -7,7 +7,6 @@ const router = express.Router();
 
 router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
-// router.use("/generate", genRouter);
 router.use("/course", courseRoutes);
 router.use("/module", moduleRoutes);
 // router.use("/materials", materialRouter);

@@ -27,7 +27,6 @@ const getCourseById = async (req, res, next) => {
 // Create a new course
 const createCourse = async (req, res, next) => {
     try {
-        console.log(req.user);
         const course = new Course({
             name: req.body.name,
             description: req.body.description || "",

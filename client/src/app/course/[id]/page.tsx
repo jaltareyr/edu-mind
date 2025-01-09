@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,28 +8,39 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import courseService from '@/components/service/courseService'
+import moduleService from '@/components/service/moduleService'
 
+interface Course {
+  _id: string;
+  name: string;
+  courseId: string;
+  instructor: string;
+  term: string;
+  description: string;
+  modules: Module[];
+}
 
 interface Module {
-  id: string;
+  _id: string;
   name: string;
-  content: string;
-  quizzes: Quiz[];
-  assignments: Assignment[];
+  courseId: string;
+  quizId: { _id: number; name: string }[];
+  assignmentId: { _id: number; name: string }[];
 }
 
 interface Quiz {
-  id: string;
+  _id: string;
   name: string;
 }
 
 interface Assignment {
-  id: string;
+  _id: string;
   name: string;
 }
 
 interface UploadedFile {
-  id: string;
+  _id: string;
   name: string;
   type: string;
   file: File;
@@ -39,70 +50,108 @@ export default function CoursePage() {
   const params = useParams()
   const courseId = params.id as string
   const router = useRouter()
-
-  const [course, setCourse] = useState({
-    id: courseId,
-    name: `Course ${courseId}`,
-    instructor: 'TBA',
-    term: 'Current Term',
-    description: 'This is a placeholder description for the course.',
-  })
-
-  const [modules, setModules] = useState<Module[]>([
-    { 
-      id: '1', 
-      name: 'Introduction', 
-      content: 'Welcome to the course!',
-      quizzes: [{ id: 'q1', name: 'Intro Quiz' }],
-      assignments: [{ id: 'a1', name: 'Intro Assignment' }]
-    },
-    { 
-      id: '2', 
-      name: 'Week 1', 
-      content: 'First week materials',
-      quizzes: [{ id: 'q2', name: 'Week 1 Quiz' }],
-      assignments: [{ id: 'a2', name: 'Week 1 Assignment' }]
-    },
-    { 
-      id: '3', 
-      name: 'Week 2', 
-      content: 'Second week materials',
-      quizzes: [{ id: 'q3', name: 'Week 2 Quiz' }],
-      assignments: [{ id: 'a3', name: 'Week 2 Assignment' }]
-    },
-  ])
-
+  const [course, setCourse] = useState<Course | null>(null)
+  const [modules, setModules] = useState<Module[]>([])
   const [expandedModules, setExpandedModules] = useState<string[]>([])
   const [newModuleName, setNewModuleName] = useState('')
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false)
+  const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+
+  useEffect(() => {
+    const fetchCourse = async () => {
+      try {
+        const response = await courseService.getById(courseId);
+        if (response && response.course) {
+          setCourse(response.course);
+          setModules(response.course.modules || []);
+        } else {
+          console.error("Course data is missing or undefined:", response);
+        }
+      } catch (error) {
+        console.error("Failed to fetch course:", error);
+      }
+    };
+    fetchCourse();
+  }, []);
+
+    // useEffect used to fetch all modules under the given course id
+    useEffect(() => {
+      const fetchModulesAndRelatedData = async () => {
+        if (courseId) {
+          try {
+            const moduleData = await moduleService.getByCourseId(courseId as string);
+  
+            const modulesWithDetails = await Promise.all(
+              moduleData.map(async (module: Module) => {
+                // const [quizzes, assignments] = await Promise.all([
+                //   quizsService.getByModuleId(module._id),
+                //   assignmentsService.getByModuleId(module._id)
+                // ]);
+                return {
+                  ...module,
+                  // quizId: quizzes || [],
+                  // assignmentId: assignments || [],
+                  quizId: [],
+                  assignmentId: [],
+                };
+              })
+            );
+  
+            setModules(modulesWithDetails);
+  
+            // const uploadedFiles = await materialsService.getByCourseId(courseId as string);
+  
+            // if (uploadedFiles) {
+            //   setUploadedFiles(uploadedFiles);
+            // }
+  
+          } catch (error) {
+            console.error("Error fetching modules and related data:", error);
+          }
+        }
+      };
+  
+      fetchModulesAndRelatedData();
+    }, [courseId]);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev =>
       prev.includes(moduleId)
-        ? prev.filter(id => id !== moduleId)
+        ? prev.filter(_id => _id !== moduleId)
         : [...prev, moduleId]
     )
   }
 
   const toggleAllModules = () => {
     setExpandedModules(prev =>
-      prev.length === modules.length ? [] : modules.map(m => m.id)
+      prev.length === modules.length ? [] : modules.map(m => m._id)
     )
   }
 
-  const addNewModule = () => {
-    if (newModuleName.trim() !== '') {
-      const newModule: Module = {
-        id: `${modules.length + 1}`,
-        name: newModuleName,
-        content: 'New module content',
-        quizzes: [],
-        assignments: []
+  const addNewModule = async () => {
+    if (newModuleName.trim() !== "") {
+      try {
+        const newModule = await moduleService.create(newModuleName.trim(), courseId);
+
+        if (newModule) {
+          setModules(prevModules => [
+            ...prevModules,
+            {
+              _id: newModule._id,
+              name: newModule.name,
+              courseId: courseId,
+              quizId: [],
+              assignmentId: []
+            }
+          ]);
+          console.log("Module added:", newModule.name);
+          setNewModuleName("");
+          setIsModuleDialogOpen(false);
+        }
+      } catch (error) {
+        console.error(error);
       }
-      setModules([...modules, newModule])
-      setNewModuleName('')
-      setIsDialogOpen(false)
     }
   }
 
@@ -110,7 +159,7 @@ export default function CoursePage() {
     const files = event.target.files
     if (files) {
       const newFiles: UploadedFile[] = Array.from(files).map((file, index) => ({
-        id: `${Date.now()}-${index}`,
+        _id: `${Date.now()}-${index}`,
         name: file.name,
         type: file.type,
         file: file,
@@ -125,10 +174,10 @@ export default function CoursePage() {
 
   const deleteItem = (moduleId: string, itemId: string, type: 'quiz' | 'assignment') => {
     setModules(prevModules => prevModules.map(module => {
-      if (module.id === moduleId) {
+      if (module._id === moduleId) {
         return {
           ...module,
-          [type === 'quiz' ? 'quizzes' : 'assignments']: module[type === 'quiz' ? 'quizzes' : 'assignments'].filter(item => item.id !== itemId)
+          [type === 'quiz' ? 'quizId' : 'assignmentId']: module[type === 'quiz' ? 'quizId' : 'assignmentId'].filter(item => item._id.toString() !== itemId)
         }
       }
       return module
@@ -136,7 +185,7 @@ export default function CoursePage() {
   }
 
   const deleteFile = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(file => file.id !== fileId))
+    setUploadedFiles(prev => prev.filter(file => file._id !== fileId))
   }
 
   const uploadFiles = async () => {
@@ -161,6 +210,26 @@ export default function CoursePage() {
     }
   }
 
+  
+  const updateCourse = async (updatedCourse: Course) => {
+    try {
+      await courseService.edit(courseId, 
+        updatedCourse.name,
+        updatedCourse.courseId,
+        updatedCourse.instructor,
+        updatedCourse.term,
+        updatedCourse.description);
+      setCourse(updatedCourse);
+      setIsCourseDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update course:", error);
+    }
+  }
+
+  if (!course) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
@@ -170,43 +239,44 @@ export default function CoursePage() {
             <Button onClick={toggleAllModules} className="bg-black text-white hover:bg-gray-800">
               {expandedModules.length === modules.length ? 'Collapse All' : 'Expand All'}
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-black text-white hover:bg-gray-800">
-                  Add New Module
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-white">
-                <DialogHeader>
-                  <DialogTitle className="text-black">Create New Module</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="moduleName" className="text-right text-black">
-                      Module Name
-                    </Label>
-                    <Input
-                      id="moduleName"
-                      value={newModuleName}
-                      onChange={(e) => setNewModuleName(e.target.value)}
-                      className="col-span-3 border-black"
-                    />
-                  </div>
-                </div>
-                <Button onClick={addNewModule} className="bg-black text-white hover:bg-gray-800">
-                  Create Module
-                </Button>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsCourseDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
+              Edit Course
+            </Button>
+            <Button onClick={() => setIsModuleDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
+              Add New Module
+            </Button>
           </div>
         </div>
+
+        <Card className="w-full bg-white mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-black">Course Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-600">Instructor:</p>
+                <p className="text-black">{course.instructor}</p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-600">Term:</p>
+                <p className="text-black">{course.term}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-semibold text-gray-600">Description:</p>
+                <p className="text-black">{course.description}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
             {modules.map((module) => (
               <Collapsible
-                key={module.id}
-                open={expandedModules.includes(module.id)}
-                onOpenChange={() => toggleModule(module.id)}
+                key={module._id}
+                open={expandedModules.includes(module._id)}
+                onOpenChange={() => toggleModule(module._id)}
               >
                 <Card className="w-full bg-white">
                   <CardHeader className="flex flex-row items-center justify-between p-4">
@@ -230,7 +300,7 @@ export default function CoursePage() {
                       </Button>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="w-9 p-0">
-                          {expandedModules.includes(module.id) ? (
+                          {expandedModules.includes(module._id) ? (
                             <span className="h-4 w-4 text-black">▲</span>
                           ) : (
                             <span className="h-4 w-4 text-black">▼</span>
@@ -242,14 +312,14 @@ export default function CoursePage() {
                   </CardHeader>
                   <CollapsibleContent>
                     <CardContent className="p-4">
-                      <p className="text-black mb-4">{module.content}</p>
+                      {/* <p className="text-black mb-4">{module.content}</p> */}
                       <div className="space-y-4">
                         <div>
                           <h4 className="text-black font-semibold mb-2">Quizzes</h4>
-                          {module.quizzes.length > 0 ? (
+                          {module.quizId.length > 0 ? (
                             <ul className="space-y-2">
-                              {module.quizzes.map(quiz => (
-                                <li key={quiz.id} className="flex items-center justify-between">
+                              {module.quizId.map(quiz => (
+                                <li key={quiz._id} className="flex items-center justify-between">
                                   <span className="text-black">{quiz.name}</span>
                                   <div>
                                     <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
@@ -258,7 +328,7 @@ export default function CoursePage() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
-                                      onClick={() => deleteItem(module.id, quiz.id, 'quiz')}
+                                      onClick={() => deleteItem(module._id, quiz._id.toString(), 'quiz')}
                                       className="text-red-500 hover:bg-red-100"
                                     >
                                       <span className="h-4 w-4 mr-1">🗑️</span> Delete
@@ -273,10 +343,10 @@ export default function CoursePage() {
                         </div>
                         <div>
                           <h4 className="text-black font-semibold mb-2">Assignments</h4>
-                          {module.assignments.length > 0 ? (
+                          {module.assignmentId.length > 0 ? (
                             <ul className="space-y-2">
-                              {module.assignments.map(assignment => (
-                                <li key={assignment.id} className="flex items-center justify-between">
+                              {module.assignmentId.map(assignment => (
+                                <li key={assignment._id} className="flex items-center justify-between">
                                   <span className="text-black">{assignment.name}</span>
                                   <div>
                                     <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
@@ -285,7 +355,7 @@ export default function CoursePage() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
-                                      onClick={() => deleteItem(module.id, assignment.id, 'assignment')}
+                                      onClick={() => deleteItem(module._id, assignment._id.toString(), 'assignment')}
                                       className="text-red-500 hover:bg-red-100"
                                     >
                                       <span className="h-4 w-4 mr-1">🗑️</span> Delete
@@ -323,6 +393,7 @@ export default function CoursePage() {
                   id="file-upload"
                   type="file"
                   multiple
+                  className="hidden"
                   onChange={handleFileUpload}
                   accept=".doc,.docx,.pdf,.ppt,.pptx"
                 />
@@ -331,7 +402,7 @@ export default function CoursePage() {
                   {uploadedFiles.length > 0 ? (
                     <ul className="space-y-2">
                       {uploadedFiles.map((file) => (
-                        <li key={file.id} className="flex items-center justify-between">
+                        <li key={file._id} className="flex items-center justify-between">
                           <div>
                             <span className="mr-2 text-black">{file.name}</span>
                             <span className="text-sm text-gray-500">({file.type})</span>
@@ -339,7 +410,7 @@ export default function CoursePage() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => deleteFile(file.id)}
+                            onClick={() => deleteFile(file._id)}
                             className="text-red-500 hover:bg-red-100"
                           >
                             <span className="h-4 w-4 mr-1">🗑️</span> Delete
@@ -364,6 +435,87 @@ export default function CoursePage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isModuleDialogOpen} onOpenChange={setIsModuleDialogOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-black">Create New Module</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="moduleName" className="text-right text-black">
+                Module Name
+              </Label>
+              <Input
+                id="moduleName"
+                value={newModuleName}
+                onChange={(e) => setNewModuleName(e.target.value)}
+                className="col-span-3 border-black"
+              />
+            </div>
+          </div>
+          <Button onClick={addNewModule} className="bg-black text-white hover:bg-gray-800">
+            Create Module
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCourseDialogOpen} onOpenChange={setIsCourseDialogOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-black">Edit Course</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="courseName" className="text-right text-black">
+                Course Name
+              </Label>
+              <Input
+                id="courseName"
+                value={course.name}
+                onChange={(e) => setCourse({...course, name: e.target.value})}
+                className="col-span-3 border-black"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="instructor" className="text-right text-black">
+                Instructor
+              </Label>
+              <Input
+                id="instructor"
+                value={course.instructor}
+                onChange={(e) => setCourse({...course, instructor: e.target.value})}
+                className="col-span-3 border-black"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="term" className="text-right text-black">
+                Term
+              </Label>
+              <Input
+                id="term"
+                value={course.term}
+                onChange={(e) => setCourse({...course, term: e.target.value})}
+                className="col-span-3 border-black"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right text-black">
+                Description
+              </Label>
+              <Input
+                id="description"
+                value={course.description}
+                onChange={(e) => setCourse({...course, description: e.target.value})}
+                className="col-span-3 border-black"
+              />
+            </div>
+          </div>
+          <Button onClick={() => updateCourse(course)} className="bg-black text-white hover:bg-gray-800">
+            Save Changes
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

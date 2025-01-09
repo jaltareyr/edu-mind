@@ -85,7 +85,7 @@ class CourseService {
           console.error("Failed to update course:", error.response?.data?.message || error.message);
           throw new Error(error.response?.data?.message || "Failed to update course.");
         }
-      }
+    }
       
 }
 

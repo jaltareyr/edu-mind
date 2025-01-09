@@ -95,8 +95,8 @@ export default function Dashboard() {
     }
   };
     
-  const editCourse = (course: Course) => {
-    CourseService.edit(course._id, course.name, course.courseId, course.instructor, course.term, course.description)
+  const editCourse = async (course: Course) => {
+
     setEditingCourse(course);
     setNewCourse({
       name: course.name,
@@ -108,16 +108,40 @@ export default function Dashboard() {
     setIsDialogOpen(true);
   };
 
-  const saveCourseEdit = () => {
+  const saveCourseEdit = async () => {
     if (editingCourse && newCourse.name.trim() !== '') {
-      setCourses(courses.map(course => 
-        course._id === editingCourse._id ? { ...course, ...newCourse } : course
-      ));
-      setEditingCourse(null);
-      setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
-      setIsDialogOpen(false);
+      try {
+        // Call the update API to save the changes
+        const updatedCourse = await CourseService.edit(
+          editingCourse._id,
+          newCourse.name,
+          newCourse.courseId,
+          newCourse.instructor,
+          newCourse.term,
+          newCourse.description
+        );
+  
+        // Update the state with the updated course
+        setCourses((prevCourses) =>
+          prevCourses.map((course) =>
+            course._id === editingCourse._id ? updatedCourse : course
+          )
+        );
+  
+        // Reset editing state and close dialog
+        setEditingCourse(null);
+        setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
+        setIsDialogOpen(false);
+  
+        console.log(`Course ${updatedCourse.name} updated successfully.`);
+      } catch (error) {
+        console.error('Failed to update course:', error);
+        alert('Failed to save the changes. Please try again.');
+      }
+    } else {
+      alert('Course name is required!');
     }
-  };
+  };  
 
   const shareCourse = (_id: string) => {
     // Implement sharing functionality here
@@ -129,10 +153,16 @@ export default function Dashboard() {
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-black">{isLoading ? "Loading..." : "My Courses"}</h1>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              setEditingCourse(null); // Clear editing state when dialog is closed
+              setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
+            }
+            setIsDialogOpen(open);
+          }}>
             <DialogTrigger asChild>
               <Button className="bg-black text-white hover:bg-gray-800">
-                Add New Course
+                {editingCourse ? 'Edit Course' : 'Add New Course'}
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-white">
@@ -196,11 +226,14 @@ export default function Dashboard() {
                   />
                 </div>
               </div>
-              <Button onClick={editingCourse ? saveCourseEdit : addNewCourse} className="bg-black text-white hover:bg-gray-800">
+              <Button
+                onClick={editingCourse ? saveCourseEdit : addNewCourse}
+                className="bg-black text-white hover:bg-gray-800"
+              >
                 {editingCourse ? 'Save Changes' : 'Create Course'}
               </Button>
             </DialogContent>
-          </Dialog>
+          </Dialog>;
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
@@ -256,7 +289,7 @@ export default function Dashboard() {
                         <DialogTitle className="text-black">{course.name}</DialogTitle>
                       </DialogHeader>
                       <div className="py-4 text-black">
-                        <p><strong>Course ID:</strong> {course._id}</p>
+                        <p><strong>Course ID:</strong> {course.courseId}</p>
                         <p><strong>Instructor:</strong> {course.instructor}</p>
                         <p><strong>Term:</strong> {course.term}</p>
                         <p className="mt-4"><strong>Description:</strong></p>
