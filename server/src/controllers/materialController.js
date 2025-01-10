@@ -67,109 +67,42 @@ const getMaterialsByModuleId = async (req, res, next) => {
 
 // Upload a new material
 const uploadMaterial = async (req, res, next) => {
-
-    const extractTextFromFile = async (filePath, mimeType) => {
-        try {
-            if (mimeType === 'application/pdf') {
-                const dataBuffer = fs.readFileSync(filePath);
-                const pdfData = await pdfParse(dataBuffer);
-                return pdfData.text;
-            } else if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                const dataBuffer = fs.readFileSync(filePath);
-                const result = await mammoth.extractRawText({ buffer: dataBuffer });
-                return result.value;
-            } else if (mimeType === 'text/plain') {
-                return fs.readFileSync(filePath, 'utf-8');
-            } else {
-                console.warn(`Unsupported file type: ${mimeType}`);
-                return null;
-            }
-        } catch (error) {
-            console.error("Error extracting text from file:", error);
-            return null;
-        }
-    };
-
-    const chunkTextWithRules = (text, maxChunkSize) => {
-        const sentences = text.match(/[^.!?]+[.!?]*/g) || []; // Tokenize text into sentences
-        const chunks = [];
-        let currentChunk = "";
-    
-        for (const sentence of sentences) {
-            // Check if adding this sentence exceeds the chunk size
-            if (currentChunk.length + sentence.length <= maxChunkSize) {
-                currentChunk += sentence; // Add sentence to the current chunk
-            } else {
-                // Push the current chunk and start a new one
-                if (currentChunk.trim().length > 0) {
-                    chunks.push(currentChunk.trim());
-                }
-                currentChunk = sentence; // Start new chunk with the current sentence
-            }
-        }
-        // Add the last chunk if it has content
-        if (currentChunk.trim().length > 0) {
-            chunks.push(currentChunk.trim());
-        }
-        return chunks;
-    };
-
     try {
-
         if (!req.file) {
             return res.status(400).json({ message: "No files uploaded" });
         }
 
         const { courseId } = req.body;
         const userId = req.user.userId;
-        const uploadedMaterials = [];
-        file = req.file
-        const { originalname, mimetype, size, path: filePath } = file;
 
+        const file = req.file;
+        const { originalname, mimetype, size } = file;
+
+        // Assume `req.fileUrl` contains the GitHub URL of the uploaded file
+        const fileUrl = req.fileUrl;
+
+        // Save the file details, including the GitHub URL, in MongoDB
         const newMaterial = await Material.create({
             name: originalname,
-            filePath: filePath,
+            filePath: fileUrl, // Save the GitHub file URL
             mimeType: mimetype,
             fileSize: size,
             courseId,
             userId,
         });
 
-        uploadedMaterials.push({
-            _id: newMaterial._id,
-            name: newMaterial.name,
-            mimeType: newMaterial.mimeType,
-            fileSize: newMaterial.fileSize,
-            courseId: newMaterial.courseId,
-            userId: newMaterial.userId,
-        });
-
-        //2. Extract text from the file
-        const fileContents = file.buffer.toString();
-        if (!fileContents) {
-            console.error(`Failed to extract text from file: ${originalname}`);
-        }
-
-        console.log(fileContents);
-
-            // // 3. Chunk the text
-            // const chunkSize = 500; // Define max chunk size
-            // const chunks = chunkTextWithRules(textData, chunkSize);
-
-            // for (const chunkText of chunks) {
-            //     // Save the chunk in ChunksModel
-            //     await Chunk.create({
-            //         materialId: newMaterial._id,
-            //         chunkText,
-            //         userId: req.user.userId,
-            //     });
-            // }
-
         res.status(201).json({
-            message: "Files uploaded and processed successfully",
-            materials: uploadedMaterials,
+            message: "File uploaded and saved successfully",
+            material: {
+                _id: newMaterial._id,
+                name: newMaterial.name,
+                filePath: newMaterial.filePath, // GitHub file URL
+                mimeType: newMaterial.mimeType,
+                fileSize: newMaterial.fileSize,
+                courseId: newMaterial.courseId,
+                userId: newMaterial.userId,
+            },
         });
-
     } catch (error) {
         console.error("Error uploading file:", error);
         next(error);
