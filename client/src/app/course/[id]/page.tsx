@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import courseService from '@/components/service/courseService'
 import moduleService from '@/components/service/moduleService'
+import materialService from '@/components/service/materialService'
 
 interface Course {
   _id: string;
@@ -39,7 +40,7 @@ interface Assignment {
   name: string;
 }
 
-interface UploadedFile {
+interface Material {
   _id: string;
   name: string;
   type: string;
@@ -47,6 +48,7 @@ interface UploadedFile {
 }
 
 export default function CoursePage() {
+
   const params = useParams()
   const courseId = params.id as string
   const router = useRouter()
@@ -54,9 +56,10 @@ export default function CoursePage() {
   const [modules, setModules] = useState<Module[]>([])
   const [expandedModules, setExpandedModules] = useState<string[]>([])
   const [newModuleName, setNewModuleName] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false)
   const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [uploadedFiles, setUploadedFiles] = useState<Material[]>([])
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -80,7 +83,7 @@ export default function CoursePage() {
       const fetchModulesAndRelatedData = async () => {
         if (courseId) {
           try {
-            const moduleData = await moduleService.getByCourseId(courseId as string);
+            const moduleData = await moduleService.getByCourseId(courseId);
   
             const modulesWithDetails = await Promise.all(
               moduleData.map(async (module: Module) => {
@@ -100,11 +103,11 @@ export default function CoursePage() {
   
             setModules(modulesWithDetails);
   
-            // const uploadedFiles = await materialsService.getByCourseId(courseId as string);
+            const uploadedFiles = await materialService.getByCourseId(courseId as string);
   
-            // if (uploadedFiles) {
-            //   setUploadedFiles(uploadedFiles);
-            // }
+            if (uploadedFiles) {
+              setUploadedFiles(uploadedFiles);
+            }
   
           } catch (error) {
             console.error("Error fetching modules and related data:", error);
@@ -155,21 +158,30 @@ export default function CoursePage() {
     }
   }
 
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (files) {
-      const newFiles: UploadedFile[] = Array.from(files).map((file, index) => ({
-        _id: `${Date.now()}-${index}`,
-        name: file.name,
-        type: file.type,
-        file: file,
-      }))
-      setUploadedFiles(prev => [...prev, ...newFiles])
-    }
-  }, [])
+  const handleFileUpload = async (filesToUpload: FileList, courseId: string) => {
 
-  const addNewItem = (type: 'quiz' | 'assignment') => {
-    router.push(`/course/${courseId}/create-item?type=${type}`)
+    const file = filesToUpload[0];
+    if (!file) return;
+
+    try {
+      const files = Array.from(filesToUpload).map(file => file);
+
+      const uploadedFileData = await Promise.all(
+        files.map(async (file) => {
+          const response = await materialService.uploadFile(file, courseId);
+          return { ...response.data, _id: response.material._id, name: file.name };
+        }));
+      
+      console.log('File uploaded successfully:', uploadedFileData);
+
+      setUploadedFiles((prevUploadedFiles) => [
+        ...prevUploadedFiles,
+        ...uploadedFileData,
+      ]);
+
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    }
   }
 
   const deleteItem = (moduleId: string, itemId: string, type: 'quiz' | 'assignment') => {
@@ -189,26 +201,53 @@ export default function CoursePage() {
   }
 
   const uploadFiles = async () => {
-    const formData = new FormData()
-    uploadedFiles.forEach(file => {
-      formData.append('files', file.file)
-    })
-
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+
+      const formData = new FormData()
+      
+      uploadedFiles.forEach(file => {
+      formData.append('files', file.file)
       })
-      if (response.ok) {
-        console.log('Files uploaded successfully')
-        setUploadedFiles([]) // Clear the list after successful upload
-      } else {
-        console.error('File upload failed')
-      }
+
+      // Iterate over uploaded files and send them to the API
+      // const uploadedFileResponses = await Promise.all(
+        
+      //   uploadedFiles.map(async (file) => {
+
+      //     const formData = new FormData();
+      //     formData.append('file', file.file);
+      //     formData.append('name', file.name);
+      //     formData.append('type', file.type);
+      //     formData.append('courseId', courseId);
+  
+      //     const response = await materialService.uploadFile(formData);
+  
+      //     // Return the updated file object including all necessary properties
+      //     return {
+      //       _id: response.material._id,
+      //       name: file.name,
+      //       type: file.type,
+      //       file: file.file, // Include the original File object
+      //     };
+      //   })
+      // );
+  
+      // console.log('File(s) uploaded successfully:', uploadedFileResponses);
+  
+      // Update the state with the uploaded file metadata, preserving existing file objects
+      // setUploadedFiles((prevUploadedFiles) => [
+      //   ...prevUploadedFiles,
+      //   ...uploadedFileResponses,
+      // ]);
+  
+      // Optionally, clear the file input field or reset state
+      setUploadedFiles([]);
     } catch (error) {
-      console.error('Error uploading files:', error)
+      console.error('Error uploading files:', error);
     }
-  }
+  };
+  
+  
 
   
   const updateCourse = async (updatedCourse: Course) => {
@@ -282,21 +321,21 @@ export default function CoursePage() {
                   <CardHeader className="flex flex-row items-center justify-between p-4">
                     <CardTitle className="text-lg font-semibold text-black">{module.name}</CardTitle>
                     <div className="flex items-center space-x-2">
-                      <Button 
+                      {/* <Button 
                         variant="outline" 
                         size="sm" 
                         onClick={() => addNewItem('quiz')}
                         className="text-black border-black hover:bg-gray-100"
                       >
                         <span className="h-4 w-4 mr-1">+</span> Quiz
-                      </Button>
+                      </Button> */}
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => addNewItem('assignment')}
+                        onClick={() => router.push(`/create-item?courseId=${courseId}&moduleId=${module._id}`)}
                         className="text-black border-black hover:bg-gray-100"
                       >
-                        <span className="h-4 w-4 mr-1">+</span> Assignment
+                        <span className="h-4 w-4 mr-1">+</span> Quiz/Assignment
                       </Button>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="w-9 p-0">
@@ -379,26 +418,34 @@ export default function CoursePage() {
             ))}
           </div>
           <div>
+
+
+
             <Card className="w-full bg-white">
               <CardHeader>
-                <CardTitle className="text-black">Upload Files</CardTitle>
+              <label className="text-sm text-gray-500">Upload files in the following formats only: PDF, TXT, or Word Documents</label>
               </CardHeader>
               <CardContent>
-                <Label htmlFor="file-upload" className="block mb-2">
-                  <Button className="bg-black text-white hover:bg-gray-800">
-                    <span className="mr-2 h-4 w-4">↑</span> Select Files
-                  </Button>
-                </Label>
+                <div className="flex items-center space-x-2 mt-2">
+                <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
+                  Upload File
+                </Button>
                 <Input
                   id="file-upload"
                   type="file"
-                  multiple
+                  ref={fileInputRef}
                   className="hidden"
-                  onChange={handleFileUpload}
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      handleFileUpload(e.target.files, courseId)
+                    }
+                  }}
                   accept=".doc,.docx,.pdf,.ppt,.pptx"
+                  aria-label="Upload files"
                 />
+                </div>
                 <div className="mt-4">
-                  <h3 className="text-lg font-semibold mb-2 text-black">Selected Files:</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-black">Uploaded Files:</h3>
                   {uploadedFiles.length > 0 ? (
                     <ul className="space-y-2">
                       {uploadedFiles.map((file) => (
@@ -432,6 +479,10 @@ export default function CoursePage() {
                 )}
               </CardContent>
             </Card>
+
+
+
+
           </div>
         </div>
       </div>

@@ -3,13 +3,14 @@ const userRoutes = require('./userRoutes');
 const authRoutes = require('./authRoutes');
 const courseRoutes = require('./courseRoutes');
 const moduleRoutes = require('./moduleRoutes');
+const materialRoutes = require('./materialRoutes')
 const router = express.Router();
 
 router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
 router.use("/course", courseRoutes);
 router.use("/module", moduleRoutes);
-// router.use("/materials", materialRouter);
+router.use("/material", materialRoutes);
 // router.use("/assignments", assignmentRouter);
 // router.use("/quizzes", quizzesRouter);
 

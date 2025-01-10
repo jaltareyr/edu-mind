@@ -48,7 +48,7 @@ const create = async (req, res, next) => {
         const module = new moduleModel({
             name,
             courseId,
-            userId: req.user.userId, // Assuming `authMiddleware` attaches user info to req.user
+            userId: req.user.userId,
         });
 
         const savedModule = await module.save();
