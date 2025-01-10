@@ -2,6 +2,9 @@ const fs = require('fs');
 const { HfInference } = require('@huggingface/inference');
 const Material = require('../models/materialModel');
 const Chunk = require('../models/chunkModel');
+const path = require("path");
+const pdfParse = require("pdf-parse");
+const textract = require("textract");
 
 let Octokit;
 
@@ -162,14 +165,6 @@ const deleteMaterial = async (req, res, next) => {
           error: metadataError.message,
         });
       }
-
-      console.log("Attempting to delete file with parameters:", {
-        owner: process.env.GITHUB_USER,
-        repo: process.env.REPO,
-        path: sanitizedPath,
-        sha: fileSha,
-        branch: process.env.BRANCH,
-      });
   
       // Step 2: Delete the file from GitHub
       try {
@@ -206,7 +201,122 @@ const deleteMaterial = async (req, res, next) => {
       res.status(500).json({ message: "An unexpected error occurred.", error: error.message });
       next(error);
     }
-  };
-    
+};
 
-module.exports = { getMaterialById, getMaterialsByCourseId, getMaterialsByModuleId, uploadMaterial, deleteMaterial };
+const chunkifyMaterial = async (req, res) => {
+    try {
+        const { id } = req.query;
+
+        if (!id) {
+            return res.status(400).json({ error: "Document ID is required" });
+        }
+
+        // Fetch the material from the database
+        const material = await Material.findById(id);
+        if (!material) {
+            return res.status(404).json({ error: "Material not found" });
+        }
+
+        const filePath = material.filePath; // This is the GitHub URL of the file
+        if (!filePath) {
+            return res.status(400).json({ error: "No filePath provided in material" });
+        }
+
+        // Step 1: Fetch the file from GitHub
+        const octokit = getOctokitInstance();
+        const sanitizedPath = filePath.split("/blob/main/")[1];
+        if (!sanitizedPath) {
+            return res.status(400).json({ error: "Invalid GitHub file path" });
+        }
+
+        const { data: fileContent } = await octokit.request(
+            `GET /repos/${process.env.GITHUB_USER}/${process.env.REPO}/contents/${sanitizedPath}`,
+            {
+                owner: process.env.GITHUB_USER,
+                repo: process.env.REPO,
+                path: filePath,
+                ref: process.env.BRANCH,
+            }
+        );
+
+        const fileBuffer = Buffer.from(fileContent.content, "base64");
+
+        const decodedPath = decodeURIComponent(sanitizedPath);
+
+        // Step 2: Save the file locally
+        const localFilePath = path.join(__dirname, "../temp", path.basename(decodedPath));
+        fs.writeFileSync(localFilePath, fileBuffer);
+
+        // Step 3: Extract text
+        const fileExtension = path.extname(localFilePath).toLowerCase();
+        let extractedText = "";
+
+        if (fileExtension === ".pdf") {
+            // Extract text from PDF
+            const fileData = fs.readFileSync(localFilePath);
+            const pdfData = await pdfParse(fileData);
+            extractedText = pdfData.text;
+        } else if ([".doc", ".docx", ".ppt", ".pptx", ".txt"].includes(fileExtension)) {
+            // Extract text from Word, PowerPoint, or plain text
+            extractedText = await new Promise((resolve, reject) => {
+                textract.fromFileWithPath(localFilePath, (error, text) => {
+                    if (error) reject(error);
+                    else resolve(text);
+                });
+            });
+        } else {
+            fs.unlinkSync(localFilePath); // Cleanup local file
+            return res.status(400).json({ error: "Unsupported file type" });
+        }
+
+        // Step 4: Cleanup local file
+        fs.unlinkSync(localFilePath);
+
+        // Step 5: Chunk the text into paragraphs of ~80 words
+        const chunks = [];
+        const sentences = extractedText.match(/[^.!?]+[.!?]+/g) || [];
+
+        let currentChunk = [];
+        let currentWordCount = 0;
+
+        for (const sentence of sentences) {
+            const wordCount = sentence.trim().split(/\s+/).length;
+
+            if (currentWordCount + wordCount > 80) {
+                // Add the current chunk to the chunks array
+                chunks.push(currentChunk.join(" ").trim());
+                currentChunk = [];
+                currentWordCount = 0;
+            }
+
+            currentChunk.push(sentence.trim());
+            currentWordCount += wordCount;
+        }
+
+        // Add the last chunk if it has content
+        if (currentChunk.length > 0) {
+            chunks.push(currentChunk.join(" ").trim());
+        }
+
+        // Step 6: Store chunks in the database
+        const userId = req.user.id; // Assuming user ID is available in the request
+        for (const chunk of chunks) {
+            await Chunk.create({
+                materialId: material._id,
+                chunk: chunk,
+                userId: userId,
+            });
+        }
+
+        // Step 7: Return a success response
+        res.status(200).json({
+            message: "Chunks created and stored successfully",
+            totalChunks: chunks.length,
+        });
+    } catch (error) {
+        console.error("Error processing material:", error);
+        res.status(500).json({ error: "Internal server error", error });
+    }
+};
+  
+module.exports = { getMaterialById, getMaterialsByCourseId, getMaterialsByModuleId, uploadMaterial, deleteMaterial, chunkifyMaterial };

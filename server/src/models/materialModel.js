@@ -7,6 +7,7 @@ const MaterialSchema = new Schema({
     filePath: { type: String },
     fileSize: { type: Number, required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course" },
+    isProcessed: {type: Boolean, default: false},
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true }
 });
 
