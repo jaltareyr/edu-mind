@@ -196,7 +196,16 @@ export default function CoursePage() {
     }))
   }
 
-  const deleteFile = (fileId: string) => {
+  const deleteFile = async (fileId: string) => {
+
+    const data = await materialService.getById(fileId);
+
+    try {
+      const response = await materialService.deleteFile(fileId, data.filePath)
+    } catch (error) {
+      console.error('Error deleteing files:', error);
+    }
+
     setUploadedFiles(prev => prev.filter(file => file._id !== fileId))
   }
 
@@ -418,9 +427,6 @@ export default function CoursePage() {
             ))}
           </div>
           <div>
-
-
-
             <Card className="w-full bg-white">
               <CardHeader>
               <label className="text-sm text-gray-500">Upload files in the following formats only: PDF, TXT, or Word Documents</label>
@@ -469,20 +475,8 @@ export default function CoursePage() {
                     <p className="text-black">No files selected yet.</p>
                   )}
                 </div>
-                {uploadedFiles.length > 0 && (
-                  <Button 
-                    onClick={uploadFiles} 
-                    className="mt-4 bg-black text-white hover:bg-gray-800"
-                  >
-                    Upload Files
-                  </Button>
-                )}
               </CardContent>
             </Card>
-
-
-
-
           </div>
         </div>
       </div>

@@ -11,6 +11,6 @@ router.get("/getById", getMaterialById);
 router.get("/getByCourseId", getMaterialsByCourseId);
 router.get("/getByModuleId", getMaterialsByModuleId);
 router.post("/upload", uploadMiddleware, uploadToGitHub, uploadMaterial);
-router.route("/:fileId", deleteMaterial)
+router.post("/delete", deleteMaterial)
 
 module.exports = router;

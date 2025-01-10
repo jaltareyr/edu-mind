@@ -3,7 +3,24 @@ const { HfInference } = require('@huggingface/inference');
 const Material = require('../models/materialModel');
 const Chunk = require('../models/chunkModel');
 
+let Octokit;
+
 const hf = new HfInference(process.env.HUGGINGFACE_KEY);
+
+(async () => {
+    const { Octokit: ImportedOctokit } = await import("@octokit/rest");
+    Octokit = ImportedOctokit;
+  })();
+  
+  const getOctokitInstance = () => {
+    if (!Octokit) {
+      throw new Error("Octokit has not been initialized yet. Ensure it is imported dynamically.");
+    }
+  
+    return new Octokit({
+      auth: process.env.GITHUB_TOKEN, // Your GitHub personal access token
+    });
+  };
 
 // Get material by ID
 const getMaterialById = async (req, res, next) => {
@@ -112,17 +129,84 @@ const uploadMaterial = async (req, res, next) => {
 // Delete a material
 const deleteMaterial = async (req, res, next) => {
     try {
-        const materialId = req.params.fileId;
+      const { fileId, fileURL } = req.body;
+  
+      if (!fileId || !fileURL) {
+        return res.status(400).json({ message: "Missing required parameters: fileId or fileURL." });
+      }
+  
+      // Extract the relative file path
+      const sanitizedPath = fileURL.split('/blob/main/')[1];
+      if (!sanitizedPath) {
+        return res.status(400).json({ message: "Invalid fileURL format." });
+      }
+      const decodedPath = decodeURIComponent(sanitizedPath);
+  
+      const octokit = getOctokitInstance();
+  
+      // Step 1: Fetch the file metadata to get the sha
+      let fileSha;
 
-        const deletedMaterial = await Material.findOneAndDelete({ _id: materialId, userId: req.user.userId });
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: process.env.GITHUB_USER,
+          repo: process.env.REPO,
+          path: decodedPath,
+          ref: process.env.BRANCH, // Optional, specify the branch if needed
+        });
+        fileSha = data.sha;
+      } catch (metadataError) {
+        console.error("Error fetching file metadata:", metadataError.message);
+        return res.status(404).json({
+          message: "Failed to fetch file metadata from GitHub. File may not exist.",
+          error: metadataError.message,
+        });
+      }
+
+      console.log("Attempting to delete file with parameters:", {
+        owner: process.env.GITHUB_USER,
+        repo: process.env.REPO,
+        path: sanitizedPath,
+        sha: fileSha,
+        branch: process.env.BRANCH,
+      });
+  
+      // Step 2: Delete the file from GitHub
+      try {
+        const response = await octokit.request(`DELETE /repos/${process.env.GITHUB_USER}/${process.env.REPO}/contents/${sanitizedPath}`,{
+          owner: process.env.GITHUB_USER,
+          repo: process.env.REPO,
+          path: sanitizedPath, // Path to the file in the repository
+          message: `Deleting ${fileId}`,
+          branch: process.env.BRANCH, // Branch to delete from
+          sha: fileSha, // SHA retrieved from getContent
+        });
+      
+        console.log("GitHub file deleted successfully:", response.status);
+      } catch (githubError) {
+        console.error("Error deleting file from GitHub:", githubError.response?.data || githubError.message);
+        throw githubError;
+      }
+  
+      // Step 3: Delete the material record from MongoDB
+      try {
+        const deletedMaterial = await Material.findOneAndDelete({ _id: fileId, userId: req.user.userId });
         if (!deletedMaterial) {
-            return res.status(404).json({ message: "Material not found" });
+          return res.status(404).json({ message: "Material not found or unauthorized access." });
         }
-
-        res.status(200).json({ message: "Material deleted successfully" });
+      } catch (dbError) {
+        console.error("Error deleting material from MongoDB:", dbError.message);
+        return res.status(500).json({ message: "Failed to delete material from database.", error: dbError.message });
+      }
+  
+      // Step 4: Send success response
+      res.status(200).json({ message: "Material and file deleted successfully." });
     } catch (error) {
-        next(error);
+      console.error("Unexpected error in deleteMaterial:", error.message);
+      res.status(500).json({ message: "An unexpected error occurred.", error: error.message });
+      next(error);
     }
-};
+  };
+    
 
 module.exports = { getMaterialById, getMaterialsByCourseId, getMaterialsByModuleId, uploadMaterial, deleteMaterial };

@@ -45,15 +45,16 @@ class MaterialService {
     }
   }
 
-  async delete(fileId: string) {
+  async deleteFile(fileId: string, fileURL: string) {
     try {
-      const response = await axios.delete(`${API_URL}${fileId}`, {
-        withCredentials: true, // Enable sending cookies with the request
-      });
-      return response.data;
+        const response = await axios.post(`${API_URL}/delete`, {
+            fileId,
+            fileURL,
+        }, { withCredentials: true });
+        return response.data;
     } catch (error) {
-      console.error("Error deleting file:", error);
-      throw error;
+        console.error("Error deleting file:", error);
+        throw error;
     }
   }
 }
