@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/module/";
+axios.defaults.withCredentials = true;
+axios.defaults.baseURL = process.env.SERVER_URL
+
+const API_URL = `http://localhost:5000/api/module/`;
 
 class ModuleService {
 

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createSession, deleteSession } from "../lib/session";
 import { redirect } from "next/navigation";
-import authService from "@/components/service/auth.service";
+import authService from "@/components/service/authService";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }).trim(),
@@ -24,10 +24,9 @@ export async function login(prevState: any, formData: FormData) {
 
   const { email, password } = result.data;
 
-  const response = await authService.login( email, password)
+  const data = await authService.login( email, password)
 
-  if (response.status === 200) {
-    const data = response.data
+  if (data.id) {
     await createSession(data.id);
     redirect("/dashboard");
   } else {

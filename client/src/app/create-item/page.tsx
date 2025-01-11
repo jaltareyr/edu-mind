@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter, useSearchParams  } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -18,29 +18,27 @@ interface UploadedFile {
 
 interface QuizData {
   title: string;
-  quizNoOfQuestions: string;
-  quizLevel: string;
+  timeLimit: string;
+  passingScore: string;
 }
 
 interface AssignmentData {
   title: string;
-  assignmentNoOfTasks: string;
-  assignmentDiffLevel: string;
+  dueDate: string;
+  maxScore: string;
 }
 
 export default function CreateItemPage() {
-
+  const params = useParams()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const courseId = searchParams.get('courseId') || ''
-  const moduleId = searchParams.get('moduleId') || ''
+  const courseId = params.id as string
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [selectedFiles, setSelectedFiles] = useState<string[]>([])
   const [itemType, setItemType] = useState<'quiz' | 'assignment'>('quiz')
   const [prompt, setPrompt] = useState('')
-  const [quizData, setQuizData] = useState<QuizData>({ title: '', quizNoOfQuestions: '', quizLevel: '' })
-  const [assignmentData, setAssignmentData] = useState<AssignmentData>({ title: '', assignmentNoOfTasks: '', assignmentDiffLevel: '' })
+  const [quizData, setQuizData] = useState<QuizData>({ title: '', timeLimit: '', passingScore: '' })
+  const [assignmentData, setAssignmentData] = useState<AssignmentData>({ title: '', dueDate: '', maxScore: '' })
 
   useEffect(() => {
     // In a real application, fetch the uploaded files for this course
@@ -137,22 +135,22 @@ export default function CreateItemPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quizNoOfQuestions" className="text-black">Number of Questions</Label>
+                    <Label htmlFor="timeLimit" className="text-black">Time Limit (minutes)</Label>
                     <Input
-                      id="quizNoOfQuestions"
+                      id="timeLimit"
                       type="number"
-                      max={50}
-                      value={quizData.quizNoOfQuestions}
-                      onChange={(e) => handleQuizDataChange('quizNoOfQuestions', e.target.value)}
+                      value={quizData.timeLimit}
+                      onChange={(e) => handleQuizDataChange('timeLimit', e.target.value)}
                       className="border-black"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quizLevel" className="text-black">Difficulty Level</Label>
+                    <Label htmlFor="passingScore" className="text-black">Passing Score (%)</Label>
                     <Input
-                      id="quizLevel"
-                      value={quizData.quizLevel}
-                      onChange={(e) => handleQuizDataChange('quizLevel', e.target.value)}
+                      id="passingScore"
+                      type="number"
+                      value={quizData.passingScore}
+                      onChange={(e) => handleQuizDataChange('passingScore', e.target.value)}
                       className="border-black"
                     />
                   </div>
@@ -175,22 +173,22 @@ export default function CreateItemPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="assignmentNoOfTasks" className="text-black">Number of Assingments</Label>
+                    <Label htmlFor="dueDate" className="text-black">Due Date</Label>
                     <Input
-                      id="assignmentNoOfTasks"
-                      type="number"
-                      max={100}
-                      value={assignmentData.assignmentNoOfTasks}
-                      onChange={(e) => handleAssignmentDataChange('assignmentNoOfTasks', e.target.value)}
+                      id="dueDate"
+                      type="date"
+                      value={assignmentData.dueDate}
+                      onChange={(e) => handleAssignmentDataChange('dueDate', e.target.value)}
                       className="border-black"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="assignmentDiffLevel" className="text-black">Difficulty Level</Label>
+                    <Label htmlFor="maxScore" className="text-black">Maximum Score</Label>
                     <Input
-                      id="assignmentDiffLevel"
-                      value={assignmentData.assignmentDiffLevel}
-                      onChange={(e) => handleAssignmentDataChange('assignmentDiffLevel', e.target.value)}
+                      id="maxScore"
+                      type="number"
+                      value={assignmentData.maxScore}
+                      onChange={(e) => handleAssignmentDataChange('maxScore', e.target.value)}
                       className="border-black"
                     />
                   </div>
@@ -202,7 +200,7 @@ export default function CreateItemPage() {
               <Label htmlFor="prompt" className="text-lg font-semibold text-black block mb-2">Prompt</Label>
               <Textarea
                 id="prompt"
-                placeholder="Enter your topic here..."
+                placeholder="Enter your prompt here..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 className="min-h-[100px] border-black text-black"

@@ -1,14 +1,27 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 
-// Generate JWT Token
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-};
+const checkUser = async (req, res) => {
+    try {
+        const { clerkid } = req.query;
+
+        const existingUser = await User.findOne({ clerkid: clerkid });
+        // Return the user if found
+        if (existingUser) {
+
+            return res.status(200).json({ user: existingUser });
+        }
+        // Return 404 if the user is not found
+        return res.status(201).json({ error: "User not found." });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+
+}
 
 // Register User
 const registerUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { clerkid, email, name } = req.body;
 
     try {
         const existingUser = await User.findOne({ email });
@@ -16,13 +29,9 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        const user = await User.create({ name, email, password });
+        const user = await User.create({ clerkid, email, name });
 
-        res.status(201).json({
-            id: user._id,
-            name: user.name,
-            email: user.email,
-        });
+        res.status(201).json({ user: user });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -31,17 +40,26 @@ const registerUser = async (req, res) => {
 // Login User
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
-
     try {
         const user = await User.findOne({ email });
         if (user && (await user.matchPassword(password))) {
-            const token = generateToken(user._id);
-            res.cookie('session', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 1000
-            });
+
+            // Generate JWT Token
+            const generateToken = (id) => {
+                return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            };
+
+            const session = generateToken(user._id);
+            
+            res.setHeader('Set-Cookie', `session=${session}; HttpOnly; Path=/`);
+
+            // res.cookie('session', token, {
+            //     httpOnly: true,
+            //     secure: process.env.NODE_ENV === 'production', // Use secure cookies only in production
+            //     sameSite: 'lax',
+            //     maxAge: 3600000, // 1 hour
+            //     path: '/',
+            //   });              
 
             res.status(200).json({
                 id: user._id,
@@ -62,4 +80,4 @@ const logoutUser = (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
 };
 
-module.exports = { registerUser, loginUser, logoutUser };
+module.exports = { registerUser, loginUser, logoutUser, checkUser };

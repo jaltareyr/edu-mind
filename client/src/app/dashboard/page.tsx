@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from 'next/link'
+import { useAuth } from '@clerk/nextjs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ interface Course {
 }
 
 export default function Dashboard() {
+  const { getToken } = useAuth()
   const [courses, setCourses] = useState<Course[]>([]);
   const [newCourse, setNewCourse] = useState({
     name: '',
@@ -38,20 +40,32 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCourses = async () => {
+    const initializeTokenAndFetchCourses = async () => {
       setIsLoading(true);
+
       try {
+        // Retrieve token from Clerk
+        const token = await getToken();
+        if (!token) {
+          console.error('Failed to retrieve token.');
+          return;
+        }
+
+        // Set token in CourseService
+        CourseService.setToken(token);
+
+        // Fetch courses from the backend
         const response = await CourseService.get();
         setCourses(response || []);
       } catch (error) {
-        console.error('Failed to fetch courses:', error);
+        console.error('Error initializing dashboard:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCourses();
-  }, []);
+    initializeTokenAndFetchCourses();
+  }, [getToken]);
 
   const addNewCourse = async () => {
     if (newCourse.name.trim() !== '') {

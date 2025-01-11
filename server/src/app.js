@@ -1,19 +1,21 @@
 const express = require('express');
-const cors = require('cors');
-const cookieParser = require('cookie-parser'); // Added for cookie parsing
 const mainRouter = require('./routes');
-require('dotenv').config();
-require('./config/database');
+const cors = require('cors');
 const { errorHandler } = require('./middlewares/errorHandler');
+
+require('./config/database');
 
 const app = express();
 
-// Middleware
-app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000', // Replace with your frontend URL
-    credentials: true, // Allow cookies to be sent
-}));
-app.use(cookieParser()); // Parse cookies
+// Enable CORS for specific origin
+app.use(
+    cors({
+      origin: 'http://localhost:3000', // Allow requests from your frontend
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Allow specific HTTP methods
+      credentials: true, // Allow cookies and authentication headers
+    })
+  );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

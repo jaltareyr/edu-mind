@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import authService from "@/components/service/auth.service";
+import authService from "@/components/service/authService";
 import { validateSignupData } from "./actions";
 
 type Errors = {
