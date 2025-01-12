@@ -1,14 +1,14 @@
-const express = require('express');
-const userRoutes = require('./userRoutes');
-const authRoutes = require('./authRoutes');
-const courseRoutes = require('./courseRoutes');
-const moduleRoutes = require('./moduleRoutes');
-const materialRoutes = require('./materialRoutes')
-const generateRoutes = require('./generateRoutes')
+const express = require("express");
+const userRoutes = require("./userRoutes");
+const authRoutes = require("./authRoutes");
+const courseRoutes = require("./courseRoutes");
+const moduleRoutes = require("./moduleRoutes");
+const materialRoutes = require("./materialRoutes");
+const generateRoutes = require("./generateRoutes");
 const router = express.Router();
 
-router.use('/users', userRoutes);
-router.use('/auth', authRoutes);
+router.use("/users", userRoutes);
+router.use("/auth", authRoutes);
 router.use("/course", courseRoutes);
 router.use("/module", moduleRoutes);
 router.use("/material", materialRoutes);

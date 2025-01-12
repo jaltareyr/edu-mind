@@ -8,47 +8,41 @@ const OPENAPI_ORG = process.env.OPENAPI_ORG;
 const OPENAPI_PROJ = process.env.OPENAPI_PROJ;
 
 const RESPONSE_JSON = {
-  "1": {
-    "mcq": "multiple choice question",
-    "options": {
-      "a": "choice here",
-      "b": "choice here",
-      "c": "choice here",
-      "d": "choice here",
+  1: {
+    mcq: "multiple choice question",
+    options: {
+      a: "choice here",
+      b: "choice here",
+      c: "choice here",
+      d: "choice here",
     },
-    "correct": "correct answer",
+    correct: "correct answer",
   },
-  "2": {
-    "mcq": "multiple choice question",
-    "options": {
-      "a": "choice here",
-      "b": "choice here",
-      "c": "choice here",
-      "d": "choice here",
+  2: {
+    mcq: "multiple choice question",
+    options: {
+      a: "choice here",
+      b: "choice here",
+      c: "choice here",
+      d: "choice here",
     },
-    "correct": "correct answer",
+    correct: "correct answer",
   },
-  "3": {
-    "mcq": "multiple choice question",
-    "options": {
-      "a": "choice here",
-      "b": "choice here",
-      "c": "choice here",
-      "d": "choice here",
+  3: {
+    mcq: "multiple choice question",
+    options: {
+      a: "choice here",
+      b: "choice here",
+      c: "choice here",
+      d: "choice here",
     },
-    "correct": "correct answer",
+    correct: "correct answer",
   },
 };
 
 const genQuiz = async (req, res, next) => {
   try {
-    const { filedata, number, subject, tone } = req.body;
-
-    // Debugging: Log the environment variables and request body
-    console.log("Using API Key:", OPENAI_API_KEY ? "Present" : "Missing");
-    console.log("Using OpenAI Organization:", OPENAPI_ORG);
-    console.log("Using OpenAI Project:", OPENAPI_PROJ);
-    console.log("Request Body:", req.body);
+    const { prompt, number, topic, tone } = req.body;
 
     // Generate Quiz
     const quizCompletion = await axios.post(
@@ -56,14 +50,17 @@ const genQuiz = async (req, res, next) => {
       {
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are an expert MCQ creator." },
+          {
+            role: "system",
+            content: `You are an expert MCQ creator in ${topic} topic.`,
+          },
           {
             role: "user",
             content: `
             ### REF CONTENT
-            ${filedata}
+            ${prompt}
             
-            Your task is to create a quiz of ${number} multiple choice questions on topic ${subject} for students in ${tone} tone.
+            Your task is to create a quiz of ${number} multiple choice questions on topic ${topic} for students in ${tone} tone.
 
             ### Instructions:
             - Each question must conform to the provided text REF CONTENT.
@@ -84,7 +81,7 @@ const genQuiz = async (req, res, next) => {
           "OpenAI-Organization": OPENAPI_ORG,
           "OpenAI-Project": OPENAPI_PROJ,
         },
-      }
+      },
     );
 
     const quiz = quizCompletion.data.choices[0].message.content;
@@ -95,7 +92,11 @@ const genQuiz = async (req, res, next) => {
       {
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are an expert Multiple Choice Quiz (MCQ) creator and English grammarian. " },
+          {
+            role: "system",
+            content:
+              "You are an expert Multiple Choice Quiz (MCQ) creator and English grammarian.",
+          },
           {
             role: "user",
             content: `
@@ -114,7 +115,6 @@ const genQuiz = async (req, res, next) => {
                       3. **Output Format**:
                         - Provide the response **strictly in the following JSON format**:
                           {
-                            "analysis": "string (max 50 words)",
                             "quiz": {
                               "question_number": {
                                 "mcq": "string",
@@ -144,7 +144,7 @@ const genQuiz = async (req, res, next) => {
           "OpenAI-Organization": OPENAPI_ORG,
           "OpenAI-Project": OPENAPI_PROJ,
         },
-      }
+      },
     );
 
     const reviewedquiz = reviewCompletion.data.choices[0].message.content;
@@ -159,5 +159,117 @@ const genQuiz = async (req, res, next) => {
   }
 };
 
+const genAssignment = async (req, res, next) => {
+  try {
+    const { prompt, number, topic, tone } = req.body;
+    // Step 1: Generate Assignment Tasks
+    const assignmentCompletion = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert Assignment Creator in ${topic} topic.`,
+          },
+          {
+            role: "user",
+            content: `
+            Provided Content -
+            ${prompt}
+            Generate ${number} number of assignment tasks based on the provided content. Ensure tasks are aligned with the subject matter and student analytical abilities. Follow these instructions carefully:
+
+            1. **Task Requirements**:
+              - Create assignment tasks derived from the provided content.
+              - Ensure the tasks are clear and suitable for the target audience. The difficulty level should be ${tone}.
+
+            2. **Output Format**:
+              - Provide the response **strictly in the following JSON format**:
+                {
+                  "assignments": {
+                    "1": "This is assignment statement 1",
+                    "2": "This is assignment statement 2",
+                    "3": "This is assignment statement 3"
+                  }
+                }
+              - Any deviation from this format will result in rejection of the response.
+
+            3. **No Additional Text**:
+              - Do not include explanations, context, or additional text outside the JSON structure.`,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "OpenAI-Organization": OPENAPI_ORG,
+          "OpenAI-Project": OPENAPI_PROJ,
+        },
+      },
+    );
+
+    const assignments = assignmentCompletion.data.choices[0].message.content;
+
+    // Step 2: Review and Finalize Assignment Tasks
+    const reviewCompletion = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert Assignment Reviewer and Editor.",
+          },
+          {
+            role: "user",
+            content: `
+            Generated Assignments -
+            ${assignments}
+            Review and refine the assignment tasks for clarity, alignment with subject matter, and suitability for students. Follow these instructions carefully:
+
+            1. **Review Requirements**:
+              - Check each task for clarity and correctness.
+              - Ensure tasks are challenging but appropriate for the target audience.
+
+            2. **Output Format**:
+              - Provide the response **strictly in the following JSON format**:
+                {
+                  "assignments": {
+                    "1": "This is the refined assignment statement 1",
+                    "2": "This is the refined assignment statement 2",
+                    "3": "This is the refined assignment statement 3"
+                  }
+                }
+              - Any deviation from this format will result in rejection of the response.
+
+            3. **No Additional Text**:
+              - Do not include explanations, context, or additional text outside the JSON structure.`,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "OpenAI-Organization": OPENAPI_ORG,
+          "OpenAI-Project": OPENAPI_PROJ,
+        },
+      },
+    );
+
+    const reviewedAssignments =
+      reviewCompletion.data.choices[0].message.content;
+
+    res.status(200).json({ assignment: JSON.parse(reviewedAssignments) });
+  } catch (error) {
+    console.error(
+      "Error in generateAndReviewAssignmentTasks:",
+      error.response?.data || error.message,
+    );
+    throw new Error("Failed to generate or review assignments.");
+  }
+};
+
 // Export the controller
-module.exports = { genQuiz };
+module.exports = { genQuiz, genAssignment };

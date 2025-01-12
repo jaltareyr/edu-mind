@@ -1,6 +1,11 @@
-const express = require('express');
-const authMiddleware = require('../middlewares/authMiddleware');
-const { getByCourseId, getById, create, deleteModule } = require('../controllers/moduleController');
+const express = require("express");
+const authMiddleware = require("../middlewares/authMiddleware");
+const {
+  getByCourseId,
+  getById,
+  create,
+  deleteModule,
+} = require("../controllers/moduleController");
 const router = express.Router();
 
 // Apply authMiddleware to all routes

@@ -11,7 +11,9 @@ let Octokit; // Placeholder for the dynamically imported module
 // Wait for Octokit to be initialized
 const getOctokitInstance = () => {
   if (!Octokit) {
-    throw new Error("Octokit has not been initialized yet. Ensure it is imported dynamically.");
+    throw new Error(
+      "Octokit has not been initialized yet. Ensure it is imported dynamically.",
+    );
   }
 
   return new Octokit({
@@ -28,7 +30,11 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true); // Accept the file
   } else {
-    cb(new Error("Invalid file type. Allowed file types are .txt, .pdf, and .doc"));
+    cb(
+      new Error(
+        "Invalid file type. Allowed file types are .txt, .pdf, and .doc",
+      ),
+    );
   }
 };
 

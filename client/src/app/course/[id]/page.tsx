@@ -1,17 +1,27 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import courseService from '@/components/service/courseService'
-import moduleService from '@/components/service/moduleService'
-import materialService from '@/components/service/materialService'
-import { useAuth } from '@clerk/nextjs';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import courseService from "@/components/service/courseService";
+import moduleService from "@/components/service/moduleService";
+import materialService from "@/components/service/materialService";
+import { useAuth } from "@clerk/nextjs";
 
 interface Course {
   _id: string;
@@ -49,19 +59,18 @@ interface Material {
 }
 
 export default function CoursePage() {
-
-  const { getToken } = useAuth()
-  const params = useParams()
-  const courseId = params.id as string
-  const router = useRouter()
-  const [course, setCourse] = useState<Course | null>(null)
-  const [modules, setModules] = useState<Module[]>([])
-  const [expandedModules, setExpandedModules] = useState<string[]>([])
-  const [newModuleName, setNewModuleName] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false)
-  const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<Material[]>([])
+  const { getToken } = useAuth();
+  const params = useParams();
+  const courseId = params.id as string;
+  const router = useRouter();
+  const [course, setCourse] = useState<Course | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
+  const [newModuleName, setNewModuleName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
+  const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<Material[]>([]);
 
   // Second useEffect: Fetch course, modules, and related data
   useEffect(() => {
@@ -70,12 +79,18 @@ export default function CoursePage() {
 
       try {
         // Fetch the course data
-        const response = await courseService.getById(await getToken(), courseId);
+        const response = await courseService.getById(
+          await getToken(),
+          courseId,
+        );
         if (response && response.course) {
           setCourse(response.course);
 
           // Fetch modules under the course
-          const moduleData = await moduleService.getByCourseId(await getToken(), courseId);
+          const moduleData = await moduleService.getByCourseId(
+            await getToken(),
+            courseId,
+          );
 
           const modulesWithDetails = await Promise.all(
             moduleData.map(async (module: any) => {
@@ -90,21 +105,27 @@ export default function CoursePage() {
                 quizId: [], // Replace with `quizzes` if applicable
                 assignmentId: [], // Replace with `assignments` if applicable
               };
-            })
+            }),
           );
 
           setModules(modulesWithDetails);
 
           // Fetch uploaded files for the course
-          const uploadedFiles = await materialService.getByCourseId(await getToken(), courseId);
+          const uploadedFiles = await materialService.getByCourseId(
+            await getToken(),
+            courseId,
+          );
           if (uploadedFiles) {
             setUploadedFiles(uploadedFiles);
           }
         } else {
-          console.error('Course data is missing or undefined:', response);
+          console.error("Course data is missing or undefined:", response);
         }
       } catch (error) {
-        console.error('An error occurred while fetching course and modules:', error);
+        console.error(
+          "An error occurred while fetching course and modules:",
+          error,
+        );
       }
     };
 
@@ -112,34 +133,38 @@ export default function CoursePage() {
   }, []);
 
   const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev =>
+    setExpandedModules((prev) =>
       prev.includes(moduleId)
-        ? prev.filter(_id => _id !== moduleId)
-        : [...prev, moduleId]
-    )
-  }
+        ? prev.filter((_id) => _id !== moduleId)
+        : [...prev, moduleId],
+    );
+  };
 
   const toggleAllModules = () => {
-    setExpandedModules(prev =>
-      prev.length === modules.length ? [] : modules.map(m => m._id)
-    )
-  }
+    setExpandedModules((prev) =>
+      prev.length === modules.length ? [] : modules.map((m) => m._id),
+    );
+  };
 
   const addNewModule = async () => {
     if (newModuleName.trim() !== "") {
       try {
-        const newModule = await moduleService.create(await getToken(), newModuleName.trim(), courseId);
+        const newModule = await moduleService.create(
+          await getToken(),
+          newModuleName.trim(),
+          courseId,
+        );
 
         if (newModule) {
-          setModules(prevModules => [
+          setModules((prevModules) => [
             ...prevModules,
             {
               _id: newModule._id,
               name: newModule.name,
               courseId: courseId,
               quizId: [],
-              assignmentId: []
-            }
+              assignmentId: [],
+            },
           ]);
           console.log("Module added:", newModule.name);
           setNewModuleName("");
@@ -149,71 +174,91 @@ export default function CoursePage() {
         console.error(error);
       }
     }
-  }
+  };
 
-  const handleFileUpload = async (filesToUpload: FileList, courseId: string) => {
-
+  const handleFileUpload = async (
+    filesToUpload: FileList,
+    courseId: string,
+  ) => {
     const file = filesToUpload[0];
     if (!file) return;
 
     try {
-      const files = Array.from(filesToUpload).map(file => file);
+      const files = Array.from(filesToUpload).map((file) => file);
 
       const uploadedFileData = await Promise.all(
         files.map(async (file) => {
-          const response = await materialService.uploadFile(await getToken(), file, courseId);
-          return { ...response.data, _id: response.material._id, name: file.name };
-        }));
-      
-      console.log('File uploaded successfully:', uploadedFileData);
+          const response = await materialService.uploadFile(
+            await getToken(),
+            file,
+            courseId,
+          );
+          return {
+            ...response.data,
+            _id: response.material._id,
+            name: file.name,
+          };
+        }),
+      );
+
+      console.log("File uploaded successfully:", uploadedFileData);
 
       setUploadedFiles((prevUploadedFiles) => [
         ...prevUploadedFiles,
         ...uploadedFileData,
       ]);
-
     } catch (error) {
       console.error("Error uploading file:", error);
     }
-  }
+  };
 
-  const deleteItem = (moduleId: string, itemId: string, type: 'quiz' | 'assignment') => {
-    setModules(prevModules => prevModules.map(module => {
-      if (module._id === moduleId) {
-        return {
-          ...module,
-          [type === 'quiz' ? 'quizId' : 'assignmentId']: module[type === 'quiz' ? 'quizId' : 'assignmentId'].filter(item => item._id.toString() !== itemId)
+  const deleteItem = (
+    moduleId: string,
+    itemId: string,
+    type: "quiz" | "assignment",
+  ) => {
+    setModules((prevModules) =>
+      prevModules.map((module) => {
+        if (module._id === moduleId) {
+          return {
+            ...module,
+            [type === "quiz" ? "quizId" : "assignmentId"]: module[
+              type === "quiz" ? "quizId" : "assignmentId"
+            ].filter((item) => item._id.toString() !== itemId),
+          };
         }
-      }
-      return module
-    }))
-  }
+        return module;
+      }),
+    );
+  };
 
   const deleteFile = async (fileId: string) => {
-
     const data = await materialService.getById(await getToken(), fileId);
 
     try {
-      const response = await materialService.deleteFile(await getToken(), fileId, data.filePath)
+      const response = await materialService.deleteFile(
+        await getToken(),
+        fileId,
+        data.filePath,
+      );
     } catch (error) {
-      console.error('Error deleteing files:', error);
+      console.error("Error deleteing files:", error);
     }
 
-    setUploadedFiles(prev => prev.filter(file => file._id !== fileId))
-  }
+    setUploadedFiles((prev) => prev.filter((file) => file._id !== fileId));
+  };
 
   const uploadFiles = async () => {
     try {
+      const formData = new FormData();
 
-      const formData = new FormData()
-      
-      uploadedFiles.forEach(file => {
-      formData.append('files', file.file)
-      })
+      uploadedFiles.forEach((file) => {
+        formData.append("files", file.file);
+      });
 
       // Iterate over uploaded files and send them to the API
       // const uploadedFileResponses = await Promise.all(
-        
+
       //   uploadedFiles.map(async (file) => {
 
       //     const formData = new FormData();
@@ -221,9 +266,9 @@ export default function CoursePage() {
       //     formData.append('name', file.name);
       //     formData.append('type', file.type);
       //     formData.append('courseId', courseId);
-  
+
       //     const response = await materialService.uploadFile(formData);
-  
+
       //     // Return the updated file object including all necessary properties
       //     return {
       //       _id: response.material._id,
@@ -233,39 +278,39 @@ export default function CoursePage() {
       //     };
       //   })
       // );
-  
+
       // console.log('File(s) uploaded successfully:', uploadedFileResponses);
-  
+
       // Update the state with the uploaded file metadata, preserving existing file objects
       // setUploadedFiles((prevUploadedFiles) => [
       //   ...prevUploadedFiles,
       //   ...uploadedFileResponses,
       // ]);
-  
+
       // Optionally, clear the file input field or reset state
       setUploadedFiles([]);
     } catch (error) {
-      console.error('Error uploading files:', error);
+      console.error("Error uploading files:", error);
     }
   };
-  
-  
 
-  
   const updateCourse = async (updatedCourse: Course) => {
     try {
-      await courseService.edit(await getToken(), courseId, 
+      await courseService.edit(
+        await getToken(),
+        courseId,
         updatedCourse.name,
         updatedCourse.courseId,
         updatedCourse.instructor,
         updatedCourse.term,
-        updatedCourse.description);
+        updatedCourse.description,
+      );
       setCourse(updatedCourse);
       setIsCourseDialogOpen(false);
     } catch (error) {
       console.error("Failed to update course:", error);
     }
-  }
+  };
 
   if (!course) {
     return <div>Loading...</div>;
@@ -277,13 +322,24 @@ export default function CoursePage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold text-black">{course.name}</h1>
           <div className="space-x-4">
-            <Button onClick={toggleAllModules} className="bg-black text-white hover:bg-gray-800">
-              {expandedModules.length === modules.length ? 'Collapse All' : 'Expand All'}
+            <Button
+              onClick={toggleAllModules}
+              className="bg-black text-white hover:bg-gray-800"
+            >
+              {expandedModules.length === modules.length
+                ? "Collapse All"
+                : "Expand All"}
             </Button>
-            <Button onClick={() => setIsCourseDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
+            <Button
+              onClick={() => setIsCourseDialogOpen(true)}
+              className="bg-black text-white hover:bg-gray-800"
+            >
               Edit Course
             </Button>
-            <Button onClick={() => setIsModuleDialogOpen(true)} className="bg-black text-white hover:bg-gray-800">
+            <Button
+              onClick={() => setIsModuleDialogOpen(true)}
+              className="bg-black text-white hover:bg-gray-800"
+            >
               Add New Module
             </Button>
           </div>
@@ -291,12 +347,16 @@ export default function CoursePage() {
 
         <Card className="w-full bg-white mb-8">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold text-black">Course Details</CardTitle>
+            <CardTitle className="text-2xl font-bold text-black">
+              Course Details
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-semibold text-gray-600">Instructor:</p>
+                <p className="text-sm font-semibold text-gray-600">
+                  Instructor:
+                </p>
                 <p className="text-black">{course.instructor}</p>
               </div>
               <div>
@@ -304,7 +364,9 @@ export default function CoursePage() {
                 <p className="text-black">{course.term}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-sm font-semibold text-gray-600">Description:</p>
+                <p className="text-sm font-semibold text-gray-600">
+                  Description:
+                </p>
                 <p className="text-black">{course.description}</p>
               </div>
             </div>
@@ -321,7 +383,9 @@ export default function CoursePage() {
               >
                 <Card className="w-full bg-white">
                   <CardHeader className="flex flex-row items-center justify-between p-4">
-                    <CardTitle className="text-lg font-semibold text-black">{module.name}</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-black">
+                      {module.name}
+                    </CardTitle>
                     <div className="flex items-center space-x-2">
                       {/* <Button 
                         variant="outline" 
@@ -331,10 +395,14 @@ export default function CoursePage() {
                       >
                         <span className="h-4 w-4 mr-1">+</span> Quiz
                       </Button> */}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => router.push(`/create-item?courseId=${courseId}&moduleId=${module._id}`)}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          router.push(
+                            `/create-item?courseId=${courseId}&moduleId=${module._id}`,
+                          )
+                        }
                         className="text-black border-black hover:bg-gray-100"
                       >
                         <span className="h-4 w-4 mr-1">+</span> Quiz/Assignment
@@ -356,23 +424,42 @@ export default function CoursePage() {
                       {/* <p className="text-black mb-4">{module.content}</p> */}
                       <div className="space-y-4">
                         <div>
-                          <h4 className="text-black font-semibold mb-2">Quizzes</h4>
+                          <h4 className="text-black font-semibold mb-2">
+                            Quizzes
+                          </h4>
                           {module.quizId.length > 0 ? (
                             <ul className="space-y-2">
-                              {module.quizId.map(quiz => (
-                                <li key={quiz._id} className="flex items-center justify-between">
-                                  <span className="text-black">{quiz.name}</span>
+                              {module.quizId.map((quiz) => (
+                                <li
+                                  key={quiz._id}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span className="text-black">
+                                    {quiz.name}
+                                  </span>
                                   <div>
-                                    <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
-                                      <span className="h-4 w-4 mr-1">📄</span> Open
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-black hover:bg-gray-100"
+                                    >
+                                      <span className="h-4 w-4 mr-1">📄</span>{" "}
+                                      Open
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => deleteItem(module._id, quiz._id.toString(), 'quiz')}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteItem(
+                                          module._id,
+                                          quiz._id.toString(),
+                                          "quiz",
+                                        )
+                                      }
                                       className="text-red-500 hover:bg-red-100"
                                     >
-                                      <span className="h-4 w-4 mr-1">🗑️</span> Delete
+                                      <span className="h-4 w-4 mr-1">🗑️</span>{" "}
+                                      Delete
                                     </Button>
                                   </div>
                                 </li>
@@ -383,23 +470,42 @@ export default function CoursePage() {
                           )}
                         </div>
                         <div>
-                          <h4 className="text-black font-semibold mb-2">Assignments</h4>
+                          <h4 className="text-black font-semibold mb-2">
+                            Assignments
+                          </h4>
                           {module.assignmentId.length > 0 ? (
                             <ul className="space-y-2">
-                              {module.assignmentId.map(assignment => (
-                                <li key={assignment._id} className="flex items-center justify-between">
-                                  <span className="text-black">{assignment.name}</span>
+                              {module.assignmentId.map((assignment) => (
+                                <li
+                                  key={assignment._id}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span className="text-black">
+                                    {assignment.name}
+                                  </span>
                                   <div>
-                                    <Button variant="ghost" size="sm" className="text-black hover:bg-gray-100">
-                                      <span className="h-4 w-4 mr-1">✏️</span> Open
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-black hover:bg-gray-100"
+                                    >
+                                      <span className="h-4 w-4 mr-1">✏️</span>{" "}
+                                      Open
                                     </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => deleteItem(module._id, assignment._id.toString(), 'assignment')}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        deleteItem(
+                                          module._id,
+                                          assignment._id.toString(),
+                                          "assignment",
+                                        )
+                                      }
                                       className="text-red-500 hover:bg-red-100"
                                     >
-                                      <span className="h-4 w-4 mr-1">🗑️</span> Delete
+                                      <span className="h-4 w-4 mr-1">🗑️</span>{" "}
+                                      Delete
                                     </Button>
                                   </div>
                                 </li>
@@ -422,40 +528,54 @@ export default function CoursePage() {
           <div>
             <Card className="w-full bg-white">
               <CardHeader>
-              <label className="text-sm text-gray-500">Upload files in the following formats only: PDF, TXT, or Word Documents</label>
+                <label className="text-sm text-gray-500">
+                  Upload files in the following formats only: PDF, TXT, or Word
+                  Documents
+                </label>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center space-x-2 mt-2">
-                <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm">
-                  Upload File
-                </Button>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      handleFileUpload(e.target.files, courseId)
-                    }
-                  }}
-                  accept=".doc,.docx,.pdf,.ppt,.pptx"
-                  aria-label="Upload files"
-                />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Upload File
+                  </Button>
+                  <Input
+                    id="file-upload"
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        handleFileUpload(e.target.files, courseId);
+                      }
+                    }}
+                    accept=".doc,.docx,.pdf,.ppt,.pptx"
+                    aria-label="Upload files"
+                  />
                 </div>
                 <div className="mt-4">
-                  <h3 className="text-lg font-semibold mb-2 text-black">Uploaded Files:</h3>
+                  <h3 className="text-lg font-semibold mb-2 text-black">
+                    Uploaded Files:
+                  </h3>
                   {uploadedFiles.length > 0 ? (
                     <ul className="space-y-2">
                       {uploadedFiles.map((file) => (
-                        <li key={file._id} className="flex items-center justify-between">
+                        <li
+                          key={file._id}
+                          className="flex items-center justify-between"
+                        >
                           <div>
                             <span className="mr-2 text-black">{file.name}</span>
-                            <span className="text-sm text-gray-500">({file.type})</span>
+                            <span className="text-sm text-gray-500">
+                              ({file.type})
+                            </span>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => deleteFile(file._id)}
                             className="text-red-500 hover:bg-red-100"
                           >
@@ -492,7 +612,10 @@ export default function CoursePage() {
               />
             </div>
           </div>
-          <Button onClick={addNewModule} className="bg-black text-white hover:bg-gray-800">
+          <Button
+            onClick={addNewModule}
+            className="bg-black text-white hover:bg-gray-800"
+          >
             Create Module
           </Button>
         </DialogContent>
@@ -511,7 +634,7 @@ export default function CoursePage() {
               <Input
                 id="courseName"
                 value={course.name}
-                onChange={(e) => setCourse({...course, name: e.target.value})}
+                onChange={(e) => setCourse({ ...course, name: e.target.value })}
                 className="col-span-3 border-black"
               />
             </div>
@@ -522,7 +645,9 @@ export default function CoursePage() {
               <Input
                 id="instructor"
                 value={course.instructor}
-                onChange={(e) => setCourse({...course, instructor: e.target.value})}
+                onChange={(e) =>
+                  setCourse({ ...course, instructor: e.target.value })
+                }
                 className="col-span-3 border-black"
               />
             </div>
@@ -533,7 +658,7 @@ export default function CoursePage() {
               <Input
                 id="term"
                 value={course.term}
-                onChange={(e) => setCourse({...course, term: e.target.value})}
+                onChange={(e) => setCourse({ ...course, term: e.target.value })}
                 className="col-span-3 border-black"
               />
             </div>
@@ -544,16 +669,21 @@ export default function CoursePage() {
               <Input
                 id="description"
                 value={course.description}
-                onChange={(e) => setCourse({...course, description: e.target.value})}
+                onChange={(e) =>
+                  setCourse({ ...course, description: e.target.value })
+                }
                 className="col-span-3 border-black"
               />
             </div>
           </div>
-          <Button onClick={() => updateCourse(course)} className="bg-black text-white hover:bg-gray-800">
+          <Button
+            onClick={() => updateCourse(course)}
+            className="bg-black text-white hover:bg-gray-800"
+          >
             Save Changes
           </Button>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

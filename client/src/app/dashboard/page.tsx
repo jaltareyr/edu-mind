@@ -1,24 +1,30 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Link from 'next/link'
-import { useAuth } from '@clerk/nextjs';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import CourseService from '@/components/service/courseService'
-import moduleService from '@/components/service/moduleService'
+} from "@/components/ui/dropdown-menu";
+import CourseService from "@/components/service/courseService";
+import moduleService from "@/components/service/moduleService";
 interface Course {
   _id: string;
-  courseId: string,
+  courseId: string;
   name: string;
   instructor: string;
   term: string;
@@ -26,16 +32,15 @@ interface Course {
 }
 
 export default function Dashboard() {
-  
-  const { getToken } = useAuth()
+  const { getToken } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [newCourse, setNewCourse] = useState({
-    name: '',
-    courseId: '',
-    instructor: '',
-    term: '',
-    description: '',
-  });  
+    name: "",
+    courseId: "",
+    instructor: "",
+    term: "",
+    description: "",
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -50,7 +55,7 @@ export default function Dashboard() {
         const response = await CourseService.get(await getToken());
         setCourses(response || []);
       } catch (error) {
-        console.error('Error initializing dashboard:', error);
+        console.error("Error initializing dashboard:", error);
       } finally {
         setIsLoading(false);
       }
@@ -60,49 +65,57 @@ export default function Dashboard() {
   }, [getToken]);
 
   const addNewCourse = async () => {
-    if (newCourse.name.trim() !== '') {
+    if (newCourse.name.trim() !== "") {
       try {
         // Send the new course to the backend
-        const createdCourse = await CourseService.create(await getToken(), newCourse.name, newCourse.courseId, newCourse.instructor, newCourse.term, newCourse.description);
-        
+        const createdCourse = await CourseService.create(
+          await getToken(),
+          newCourse.name,
+          newCourse.courseId,
+          newCourse.instructor,
+          newCourse.term,
+          newCourse.description,
+        );
+
         // Add the new course returned from the backend to the state
         setCourses((prevCourses) => [...prevCourses, createdCourse]);
-  
+
         // Reset the new course input
         setNewCourse({
-          name: '',
-          courseId: '',
-          instructor: '',
-          term: '',
-          description: '',
+          name: "",
+          courseId: "",
+          instructor: "",
+          term: "",
+          description: "",
         });
-  
+
         setIsDialogOpen(false); // Close the dialog
       } catch (error) {
-        console.error('Failed to add new course:', error);
+        console.error("Failed to add new course:", error);
       }
     } else {
-      alert('Course name is required!');
+      alert("Course name is required!");
     }
   };
-  
+
   const deleteCourse = async (_id: string) => {
     try {
       // Call the delete API to remove the course from the backend
       await CourseService.delete(await getToken(), _id);
-  
+
       // Update the state to remove the deleted course from the UI
-      setCourses((prevCourses) => prevCourses.filter((course) => course._id !== _id));
-  
+      setCourses((prevCourses) =>
+        prevCourses.filter((course) => course._id !== _id),
+      );
+
       console.log(`Course with ID ${_id} deleted successfully.`);
     } catch (error) {
-      console.error('Failed to delete course:', error);
-      alert('Failed to delete the course. Please try again.');
+      console.error("Failed to delete course:", error);
+      alert("Failed to delete the course. Please try again.");
     }
   };
-    
-  const editCourse = async (course: Course) => {
 
+  const editCourse = async (course: Course) => {
     setEditingCourse(course);
     setNewCourse({
       name: course.name,
@@ -115,39 +128,46 @@ export default function Dashboard() {
   };
 
   const saveCourseEdit = async () => {
-    if (editingCourse && newCourse.name.trim() !== '') {
+    if (editingCourse && newCourse.name.trim() !== "") {
       try {
         // Call the update API to save the changes
-        const updatedCourse = await CourseService.edit(await getToken(), 
+        const updatedCourse = await CourseService.edit(
+          await getToken(),
           editingCourse._id,
           newCourse.name,
           newCourse.courseId,
           newCourse.instructor,
           newCourse.term,
-          newCourse.description
+          newCourse.description,
         );
-  
+
         // Update the state with the updated course
         setCourses((prevCourses) =>
           prevCourses.map((course) =>
-            course._id === editingCourse._id ? updatedCourse : course
-          )
+            course._id === editingCourse._id ? updatedCourse : course,
+          ),
         );
-  
+
         // Reset editing state and close dialog
         setEditingCourse(null);
-        setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
+        setNewCourse({
+          name: "",
+          courseId: "",
+          instructor: "",
+          term: "",
+          description: "",
+        });
         setIsDialogOpen(false);
-  
+
         console.log(`Course ${updatedCourse.name} updated successfully.`);
       } catch (error) {
-        console.error('Failed to update course:', error);
-        alert('Failed to save the changes. Please try again.');
+        console.error("Failed to update course:", error);
+        alert("Failed to save the changes. Please try again.");
       }
     } else {
-      alert('Course name is required!');
+      alert("Course name is required!");
     }
-  };  
+  };
 
   const shareCourse = (_id: string) => {
     // Implement sharing functionality here
@@ -158,22 +178,35 @@ export default function Dashboard() {
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-black">{isLoading ? "Loading..." : "My Courses"}</h1>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            if (!open) {
-              setEditingCourse(null); // Clear editing state when dialog is closed
-              setNewCourse({ name: '', courseId: '', instructor: '', term: '', description: '' });
-            }
-            setIsDialogOpen(open);
-          }}>
+          <h1 className="text-4xl font-bold text-black">
+            {isLoading ? "Loading..." : "My Courses"}
+          </h1>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditingCourse(null); // Clear editing state when dialog is closed
+                setNewCourse({
+                  name: "",
+                  courseId: "",
+                  instructor: "",
+                  term: "",
+                  description: "",
+                });
+              }
+              setIsDialogOpen(open);
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="bg-black text-white hover:bg-gray-800">
-                {editingCourse ? 'Edit Course' : 'Add New Course'}
+                {editingCourse ? "Edit Course" : "Add New Course"}
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-white">
               <DialogHeader>
-                <DialogTitle className="text-black">{editingCourse ? 'Edit Course' : 'Create New Course'}</DialogTitle>
+                <DialogTitle className="text-black">
+                  {editingCourse ? "Edit Course" : "Create New Course"}
+                </DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
@@ -183,7 +216,9 @@ export default function Dashboard() {
                   <Input
                     id="courseName"
                     value={newCourse.name}
-                    onChange={(e) => setNewCourse({ ...newCourse, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, name: e.target.value })
+                    }
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -194,7 +229,9 @@ export default function Dashboard() {
                   <Input
                     id="courseId"
                     value={newCourse.courseId}
-                    onChange={(e) => setNewCourse({ ...newCourse, courseId: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, courseId: e.target.value })
+                    }
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -205,7 +242,9 @@ export default function Dashboard() {
                   <Input
                     id="instructor"
                     value={newCourse.instructor}
-                    onChange={(e) => setNewCourse({ ...newCourse, instructor: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, instructor: e.target.value })
+                    }
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -216,18 +255,28 @@ export default function Dashboard() {
                   <Input
                     id="term"
                     value={newCourse.term}
-                    onChange={(e) => setNewCourse({ ...newCourse, term: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, term: e.target.value })
+                    }
                     className="col-span-3 border-black"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right text-black">
+                  <Label
+                    htmlFor="description"
+                    className="text-right text-black"
+                  >
                     Description
                   </Label>
                   <Input
                     id="description"
                     value={newCourse.description}
-                    onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourse({
+                        ...newCourse,
+                        description: e.target.value,
+                      })
+                    }
                     className="col-span-3 border-black"
                   />
                 </div>
@@ -236,14 +285,17 @@ export default function Dashboard() {
                 onClick={editingCourse ? saveCourseEdit : addNewCourse}
                 className="bg-black text-white hover:bg-gray-800"
               >
-                {editingCourse ? 'Save Changes' : 'Create Course'}
+                {editingCourse ? "Save Changes" : "Create Course"}
               </Button>
             </DialogContent>
           </Dialog>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
-            <Card key={course._id} className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-lg border-black">
+            <Card
+              key={course._id}
+              className="w-full overflow-hidden transition-shadow duration-300 hover:shadow-lg border-black"
+            >
               <CardHeader className="bg-black text-white p-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-lg font-semibold">
                   {course.name}
@@ -255,7 +307,10 @@ export default function Dashboard() {
                       <span aria-hidden="true">⋮</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white text-black">
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-white text-black"
+                  >
                     <DropdownMenuItem onClick={() => editCourse(course)}>
                       <span className="mr-2">✏️</span>
                       <span>Edit</span>
@@ -273,9 +328,15 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-4">
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600"><strong>Course ID:</strong> {course.courseId}</p>
-                  <p className="text-sm text-gray-600"><strong>Instructor:</strong> {course.instructor}</p>
-                  <p className="text-sm text-gray-600"><strong>Term:</strong> {course.term}</p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Course ID:</strong> {course.courseId}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Instructor:</strong> {course.instructor}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Term:</strong> {course.term}
+                  </p>
                 </div>
                 <div className="flex justify-between items-center">
                   <Dialog>
@@ -292,19 +353,35 @@ export default function Dashboard() {
                     </DialogTrigger>
                     <DialogContent className="bg-white">
                       <DialogHeader>
-                        <DialogTitle className="text-black">{course.name}</DialogTitle>
+                        <DialogTitle className="text-black">
+                          {course.name}
+                        </DialogTitle>
                       </DialogHeader>
                       <div className="py-4 text-black">
-                        <p><strong>Course ID:</strong> {course.courseId}</p>
-                        <p><strong>Instructor:</strong> {course.instructor}</p>
-                        <p><strong>Term:</strong> {course.term}</p>
-                        <p className="mt-4"><strong>Description:</strong></p>
+                        <p>
+                          <strong>Course ID:</strong> {course.courseId}
+                        </p>
+                        <p>
+                          <strong>Instructor:</strong> {course.instructor}
+                        </p>
+                        <p>
+                          <strong>Term:</strong> {course.term}
+                        </p>
+                        <p className="mt-4">
+                          <strong>Description:</strong>
+                        </p>
                         <p>{course.description}</p>
                       </div>
                     </DialogContent>
                   </Dialog>
-                  <Button size="sm" className="bg-black text-white hover:bg-gray-800">
-                    <Link href={`/course/${course._id}`} className="flex items-center">
+                  <Button
+                    size="sm"
+                    className="bg-black text-white hover:bg-gray-800"
+                  >
+                    <Link
+                      href={`/course/${course._id}`}
+                      className="flex items-center"
+                    >
                       <span className="mr-1">📚</span>
                       Enter Course
                     </Link>
@@ -316,5 +393,5 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }
