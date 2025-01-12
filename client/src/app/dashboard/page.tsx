@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import CourseService from '@/components/service/courseService'
+import moduleService from '@/components/service/moduleService'
 interface Course {
   _id: string;
   courseId: string,
@@ -25,6 +26,7 @@ interface Course {
 }
 
 export default function Dashboard() {
+  
   const { getToken } = useAuth()
   const [courses, setCourses] = useState<Course[]>([]);
   const [newCourse, setNewCourse] = useState({
@@ -44,18 +46,8 @@ export default function Dashboard() {
       setIsLoading(true);
 
       try {
-        // Retrieve token from Clerk
-        const token = await getToken();
-        if (!token) {
-          console.error('Failed to retrieve token.');
-          return;
-        }
-
-        // Set token in CourseService
-        CourseService.setToken(token);
-
         // Fetch courses from the backend
-        const response = await CourseService.get();
+        const response = await CourseService.get(await getToken());
         setCourses(response || []);
       } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -71,7 +63,7 @@ export default function Dashboard() {
     if (newCourse.name.trim() !== '') {
       try {
         // Send the new course to the backend
-        const createdCourse = await CourseService.create(newCourse.name, newCourse.courseId, newCourse.instructor, newCourse.term, newCourse.description);
+        const createdCourse = await CourseService.create(await getToken(), newCourse.name, newCourse.courseId, newCourse.instructor, newCourse.term, newCourse.description);
         
         // Add the new course returned from the backend to the state
         setCourses((prevCourses) => [...prevCourses, createdCourse]);
@@ -97,7 +89,7 @@ export default function Dashboard() {
   const deleteCourse = async (_id: string) => {
     try {
       // Call the delete API to remove the course from the backend
-      await CourseService.delete(_id);
+      await CourseService.delete(await getToken(), _id);
   
       // Update the state to remove the deleted course from the UI
       setCourses((prevCourses) => prevCourses.filter((course) => course._id !== _id));
@@ -126,7 +118,7 @@ export default function Dashboard() {
     if (editingCourse && newCourse.name.trim() !== '') {
       try {
         // Call the update API to save the changes
-        const updatedCourse = await CourseService.edit(
+        const updatedCourse = await CourseService.edit(await getToken(), 
           editingCourse._id,
           newCourse.name,
           newCourse.courseId,

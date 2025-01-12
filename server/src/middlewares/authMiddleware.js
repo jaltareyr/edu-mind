@@ -34,9 +34,8 @@ const authMiddleware = async (req, res, next) => {
 
       const MongoDBUser = await User.findOne({ clerkid: decoded.userid });
       req.user = MongoDBUser;
-  
-      // Attach user info to the request object
       req.auth = decoded;
+      
       next(); // Proceed to the next middleware
     } catch (error) {
       return res.status(401).json({ error: error.message });

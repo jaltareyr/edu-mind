@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import courseService from '@/components/service/courseService'
 import moduleService from '@/components/service/moduleService'
 import materialService from '@/components/service/materialService'
+import { useAuth } from '@clerk/nextjs';
 
 interface Course {
   _id: string;
@@ -49,6 +50,7 @@ interface Material {
 
 export default function CoursePage() {
 
+  const { getToken } = useAuth()
   const params = useParams()
   const courseId = params.id as string
   const router = useRouter()
@@ -61,62 +63,53 @@ export default function CoursePage() {
   const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<Material[]>([])
 
+  // Second useEffect: Fetch course, modules, and related data
   useEffect(() => {
-    const fetchCourse = async () => {
+    const fetchCourseAndModules = async () => {
+      if (!courseId) return;
+
       try {
-        const response = await courseService.getById(courseId);
+        // Fetch the course data
+        const response = await courseService.getById(await getToken(), courseId);
         if (response && response.course) {
           setCourse(response.course);
-          setModules(response.course.modules || []);
+
+          // Fetch modules under the course
+          const moduleData = await moduleService.getByCourseId(await getToken(), courseId);
+
+          const modulesWithDetails = await Promise.all(
+            moduleData.map(async (module: any) => {
+              // Replace the following with actual services if needed
+              // const [quizzes, assignments] = await Promise.all([
+              //   quizService.getByModuleId(module._id),
+              //   assignmentService.getByModuleId(module._id),
+              // ]);
+
+              return {
+                ...module,
+                quizId: [], // Replace with `quizzes` if applicable
+                assignmentId: [], // Replace with `assignments` if applicable
+              };
+            })
+          );
+
+          setModules(modulesWithDetails);
+
+          // Fetch uploaded files for the course
+          const uploadedFiles = await materialService.getByCourseId(await getToken(), courseId);
+          if (uploadedFiles) {
+            setUploadedFiles(uploadedFiles);
+          }
         } else {
-          console.error("Course data is missing or undefined:", response);
+          console.error('Course data is missing or undefined:', response);
         }
       } catch (error) {
-        console.error("Failed to fetch course:", error);
+        console.error('An error occurred while fetching course and modules:', error);
       }
     };
-    fetchCourse();
-  }, []);
 
-    // useEffect used to fetch all modules under the given course id
-    useEffect(() => {
-      const fetchModulesAndRelatedData = async () => {
-        if (courseId) {
-          try {
-            const moduleData = await moduleService.getByCourseId(courseId);
-  
-            const modulesWithDetails = await Promise.all(
-              moduleData.map(async (module: Module) => {
-                // const [quizzes, assignments] = await Promise.all([
-                //   quizsService.getByModuleId(module._id),
-                //   assignmentsService.getByModuleId(module._id)
-                // ]);
-                return {
-                  ...module,
-                  // quizId: quizzes || [],
-                  // assignmentId: assignments || [],
-                  quizId: [],
-                  assignmentId: [],
-                };
-              })
-            );
-  
-            setModules(modulesWithDetails);
-  
-            const uploadedFiles = await materialService.getByCourseId(courseId as string);
-  
-            if (uploadedFiles) {
-              setUploadedFiles(uploadedFiles);
-            }
-  
-          } catch (error) {
-            console.error("Error fetching modules and related data:", error);
-          }
-        }
-      };
-  
-      fetchModulesAndRelatedData();
-    }, [courseId]);
+    fetchCourseAndModules();
+  }, []);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev =>
@@ -135,7 +128,7 @@ export default function CoursePage() {
   const addNewModule = async () => {
     if (newModuleName.trim() !== "") {
       try {
-        const newModule = await moduleService.create(newModuleName.trim(), courseId);
+        const newModule = await moduleService.create(await getToken(), newModuleName.trim(), courseId);
 
         if (newModule) {
           setModules(prevModules => [
@@ -168,7 +161,7 @@ export default function CoursePage() {
 
       const uploadedFileData = await Promise.all(
         files.map(async (file) => {
-          const response = await materialService.uploadFile(file, courseId);
+          const response = await materialService.uploadFile(await getToken(), file, courseId);
           return { ...response.data, _id: response.material._id, name: file.name };
         }));
       
@@ -198,10 +191,10 @@ export default function CoursePage() {
 
   const deleteFile = async (fileId: string) => {
 
-    const data = await materialService.getById(fileId);
+    const data = await materialService.getById(await getToken(), fileId);
 
     try {
-      const response = await materialService.deleteFile(fileId, data.filePath)
+      const response = await materialService.deleteFile(await getToken(), fileId, data.filePath)
     } catch (error) {
       console.error('Error deleteing files:', error);
     }
@@ -261,7 +254,7 @@ export default function CoursePage() {
   
   const updateCourse = async (updatedCourse: Course) => {
     try {
-      await courseService.edit(courseId, 
+      await courseService.edit(await getToken(), courseId, 
         updatedCourse.name,
         updatedCourse.courseId,
         updatedCourse.instructor,

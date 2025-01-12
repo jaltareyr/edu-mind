@@ -53,7 +53,7 @@ const getMaterialsByCourseId = async (req, res, next) => {
             return res.status(400).json({ error: "Course ID is required", courseId });
         }
 
-        const materials = await Material.find({ courseId, userId: req.user.userId || req.user.id });
+        const materials = await Material.find({ courseId, userId: req.user });
         if (!materials || materials.length === 0) {
             console.log("No material found for the given course ID");
             return res.status(200).json([]);
@@ -73,7 +73,7 @@ const getMaterialsByModuleId = async (req, res, next) => {
             return res.status(400).json({ error: "Module ID is required", moduleId });
         }
 
-        const materials = await Material.find({ moduleId, userId: req.user.userId || req.user.id });
+        const materials = await Material.find({ moduleId, userId: req.user });
         if (!materials || materials.length === 0) {
             console.log("No material found for the given module ID");
             return res.status(200).json([]);
@@ -93,7 +93,7 @@ const uploadMaterial = async (req, res, next) => {
         }
 
         const { courseId } = req.body;
-        const userId = req.user.userId || req.user.id;
+        const userId = req.user;
 
         const file = req.file;
         const { originalname, mimetype, size } = file;
@@ -185,7 +185,7 @@ const deleteMaterial = async (req, res, next) => {
   
       // Step 3: Delete the material record from MongoDB
       try {
-        const deletedMaterial = await Material.findOneAndDelete({ _id: fileId, userId: req.user.userId || req.user.id });
+        const deletedMaterial = await Material.findOneAndDelete({ _id: fileId, userId: req.user });
         if (!deletedMaterial) {
           return res.status(404).json({ message: "Material not found or unauthorized access." });
         }
@@ -299,7 +299,7 @@ const chunkifyMaterial = async (req, res) => {
         }
 
         // Step 6: Store chunks in the database
-        const userId = req.user.id; // Assuming user ID is available in the request
+        const userId = req.user; // Assuming user ID is available in the request
         for (const chunk of chunks) {
             await Chunk.create({
                 materialId: material._id,

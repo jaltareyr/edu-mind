@@ -48,7 +48,7 @@ const create = async (req, res, next) => {
         const module = new moduleModel({
             name,
             courseId,
-            userId: req.user.userId,
+            userId: req.user,
         });
 
         const savedModule = await module.save();

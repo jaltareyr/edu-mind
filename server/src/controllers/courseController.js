@@ -6,7 +6,7 @@ const getCourses = async (req, res, next) => {
     try {
 
       // Check if the user is authenticated
-      if (!req.auth || !req.auth.userid) {
+      if (!req.auth) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
   
@@ -31,7 +31,8 @@ const getCourses = async (req, res, next) => {
 // Get a course by ID
 const getCourseById = async (req, res, next) => {
     try {
-        const course = await Course.findById(req.user.userId || req.user.id);
+        const {id} = req.query
+        const course = await Course.findById(id);
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
         }

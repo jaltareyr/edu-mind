@@ -3,15 +3,11 @@ import axios from "axios";
 const API_URL = `http://localhost:5000/api/course/`;
 
 class CourseService {
-
-    setToken(token: string): void {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-    }
     
-    async get(): Promise<any> {
+    async get(token: any): Promise<any> {
         try {
             
-            const response = await axios.get(`${API_URL}get`);
+            const response = await axios.get(`${API_URL}get`, {headers: {Authorization: `Bearer ${token}`}});
             return response.data;
         } catch (error: any) {
             console.error("Failed to fetch courses:", error.response?.data?.message || error.message);
@@ -19,9 +15,9 @@ class CourseService {
         }
     }
 
-    async getById(id: string): Promise<any> {
+    async getById(token: any, id: string): Promise<any> {
         try {
-            const response = await axios.get(`${API_URL}getById?id=${id}`);
+            const response = await axios.get(`${API_URL}getById?id=${id}`, {headers: {Authorization: `Bearer ${token}`}});
             return response.data;
         } catch (error: any) {
             console.error("Failed to fetch course by ID:", error.response?.data?.message || error.message);
@@ -30,6 +26,7 @@ class CourseService {
     }
 
     async create(
+        token: any, 
         name: string,
         courseId: string,
         instructor: string,
@@ -37,18 +34,18 @@ class CourseService {
         description: string
       ): Promise<any> {
         try {
-          const response = await axios.post(`${API_URL}create`,{ name, courseId, instructor, term, description });
+          const response = await axios.post(`${API_URL}create`,{ name, courseId, instructor, term, description }, {headers: {Authorization: `Bearer ${token}`}});
           return response.data; // Return the created course
         } catch (error: any) {
           throw new Error(error.response?.data?.message || "Failed to create course.");
         }
     }
     
-    async updateByModuleId(courseId: string, moduleId: string): Promise<any> {
+    async updateByModuleId(token: any, courseId: string, moduleId: string): Promise<any> {
         try {
             const response = await axios.patch(
                 `${API_URL}updateModuleId/${courseId}`,
-                { moduleId }
+                { moduleId }, {headers: {Authorization: `Bearer ${token}`}}
             );
             return response.data;
         } catch (error: any) {
@@ -57,9 +54,9 @@ class CourseService {
         }
     }
 
-    async delete(courseId: string): Promise<any> {
+    async delete(token: any, courseId: string): Promise<any> {
         try {
-            const response = await axios.delete(`${API_URL}${courseId}`);
+            const response = await axios.delete(`${API_URL}${courseId}`, {headers: {Authorization: `Bearer ${token}`}});
             return response.data;
         } catch (error: any) {
             console.error("Failed to delete course:", error.response?.data?.message || error.message);
@@ -67,7 +64,7 @@ class CourseService {
         }
     }
 
-    async edit(
+    async edit(token: any, 
         id: string,
         name: string,
         courseId: string,
@@ -79,7 +76,7 @@ class CourseService {
           const response = await axios.patch(
             `${API_URL}edit/${id}`, // Backend expects ID in the route
             { name, courseId, instructor, term, description }, // Payload
-            { withCredentials: true, baseURL: process.env.SERVER_URL }
+            {headers: {Authorization: `Bearer ${token}`}}
           );
           return response.data; // Return the updated course
         } catch (error: any) {
